@@ -32,7 +32,7 @@ function argumentsFrom(argv) {
 }
 
 function printHelp() {
-  console.log(`TRAE Usage Monitor
+  console.log(`Trae Use Token
 
 Usage: node src/cli.mjs [options]
 
@@ -96,7 +96,7 @@ if (options.mock) {
     onLog: console.log
   });
 }
-console.log(`TRAE Usage Monitor: ${runtime.dashboardUrl}`);
+console.log(`Trae Use Token: ${runtime.dashboardUrl}`);
 console.log(`Database: ${options.db}`);
 if (!options.mock) console.log(`Waiting for TRAE CDP at http://${options.host}:${options.cdpPort} ...`);
 if (options.open) openBrowser(runtime.dashboardUrl);

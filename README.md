@@ -1,6 +1,6 @@
-# TRAE Usage Monitor
+# Trae Use Token
 
-TRAE Usage Monitor 是一个非官方、本地优先的 TRAE CN 扩展，用于观察模型调用的 Token、
+Trae Use Token 是一个非官方、本地优先的 TRAE CN 扩展，用于观察模型调用的 Token、
 缓存命中和积分消耗。仪表盘直接显示在 TRAE 内，不需要额外安装 Node.js，也不会把记录上传到云端。
 
 ## 功能
@@ -31,11 +31,11 @@ TRAE Usage Monitor 是一个非官方、本地优先的 TRAE CN 扩展，用于�
 
 ## 首次启动
 
-TRAE 必须在进程启动时开启本机 CDP 端口。首次使用时点击状态栏的 `TRAE Usage`，
+TRAE 必须在进程启动时开启本机 CDP 端口。首次使用时点击状态栏的 `Trae Use Token`，
 再点击“一键启动监听”。插件会在确认后保存已修改文件、带本机 CDP 端口重启 TRAE，
 并重新打开当前工作区。用户不需要打开终端。
 
-如果系统未找到 TRAE 安装位置，仍可用命令面板中的 `TRAE Usage: 复制 CDP 启动命令` 作为备用方式。
+如果系统未找到 TRAE 安装位置，仍可用命令面板中的 `Trae Use Token: 复制 CDP 启动命令` 作为备用方式。
 
 > 扩展无法在 TRAE 已启动后动态打开 Electron 调试端口。CDP 只能绑定在本机使用，
 > 不要将 9222 端口转发或暴露到局域网/公网。
@@ -44,11 +44,11 @@ TRAE 必须在进程启动时开启本机 CDP 端口。首次使用时点击状�
 
 安装并按上述方式重启 TRAE 后：
 
-- 未连接时点击状态栏的 `TRAE Usage` 进入一键启动；已连接时点击可打开内置仪表盘；
-- 或运行 `TRAE Usage: 打开内置仪表盘`；
+- 未连接时点击状态栏的 `Trae Use Token` 进入一键启动；已连接时点击可打开内置仪表盘；
+- 或运行 `Trae Use Token: 打开内置仪表盘`；
 - 或打开深链接 `trae-cn://local.trae-usage-monitor/dashboard`；
-- 若状态一直异常，运行 `TRAE Usage: 显示诊断信息`；
-- 运行 `TRAE Usage: 导出 CSV` 保存本地记录。
+- 若状态一直异常，运行 `Trae Use Token: 显示诊断信息`；
+- 运行 `Trae Use Token: 导出 CSV` 保存本地记录。
 
 状态含义：
 
@@ -78,11 +78,11 @@ POST /api/v1/commercial/get_session_usage
 
 ## 命令
 
-- `TRAE Usage: 打开内置仪表盘`
-- `TRAE Usage: 一键启动监听`
-- `TRAE Usage: 导出 CSV`
-- `TRAE Usage: 复制 CDP 启动命令`
-- `TRAE Usage: 显示诊断信息`
+- `Trae Use Token: 打开内置仪表盘`
+- `Trae Use Token: 一键启动监听`
+- `Trae Use Token: 导出 CSV`
+- `Trae Use Token: 复制 CDP 启动命令`
+- `Trae Use Token: 显示诊断信息`
 
 ## 设置
 

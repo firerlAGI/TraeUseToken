@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TRAE Usage Monitor</title>
+  <title>Trae Use Token</title>
   <style>
     :root{color-scheme:dark;--bg:#090c10;--panel:#11161d;--line:#232b36;--text:#edf3f8;--muted:#83909f;--green:#27d98b;--blue:#62a8ff;--amber:#ffbd5b}
     *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% -10%,#173024 0,transparent 30%),var(--bg);color:var(--text);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}main{max-width:1180px;margin:auto;padding:32px 22px 60px}header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:18px}h1{font-size:25px;margin:0 0 4px;letter-spacing:-.03em}.sub,.status,.range-caption{color:var(--muted)}.status{display:flex;align-items:center;gap:8px}.dot{width:9px;height:9px;border-radius:50%;background:#5d6671}.dot.on{background:var(--green);box-shadow:0 0 14px #27d98b99}
@@ -14,7 +14,7 @@
   </style>
 </head>
 <body><main aria-busy="false">
-  <header><div><h1>TRAE Usage Monitor</h1><div class="sub">本地 Token、缓存与积分观测</div></div><div class="status"><span id="dot" class="dot"></span><span id="status">正在连接</span></div></header>
+  <header><div><h1>Trae Use Token</h1><div class="sub">本地 Token、缓存与积分观测</div></div><div class="status"><span id="dot" class="dot"></span><span id="status">正在连接</span></div></header>
   <nav class="range-bar" aria-label="统计时间范围"><div class="range-tabs" role="tablist"><button class="range-tab" role="tab" data-range="day" aria-selected="true">今日</button><button class="range-tab" role="tab" data-range="week" aria-selected="false">本周</button><button class="range-tab" role="tab" data-range="month" aria-selected="false">本月</button><button class="range-tab" role="tab" data-range="all" aria-selected="false">全部记录</button></div><span id="rangeCaption" class="range-caption">显示今天 00:00 至今</span></nav>
   <section class="cards"><div class="card"><div class="label">调用次数</div><div class="value" id="calls">0</div></div><div class="card"><div class="label">总词元</div><div class="value" id="tokens">0</div></div><div class="card"><div class="label">缓存命中率</div><div class="value" id="cache">0<span class="unit">%</span></div></div><div class="card"><div class="label">积分</div><div class="value" id="credits">0</div></div></section>
   <section class="grid"><div class="panel"><h2>按模型用量</h2><div id="models" class="empty">暂无数据</div></div><div class="panel"><h2>调用记录</h2><div class="table-wrap" tabindex="0" role="region" aria-label="调用记录，可滚动"><table><thead><tr><th>时间</th><th>模型</th><th>输入</th><th>输出</th><th>缓存</th><th>积分</th></tr></thead><tbody id="recent"></tbody></table></div><div class="legend"><span class="actual">● 实际积分</span>　<span class="estimated">● 估算积分</span></div></div></section>

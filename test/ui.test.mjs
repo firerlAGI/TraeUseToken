@@ -4,6 +4,13 @@ import { readFileSync } from "node:fs";
 
 const publicDashboard = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
 const extensionDashboard = readFileSync(new URL("../extension/extension.cjs", import.meta.url), "utf8");
+const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+
+test("uses the Trae Use Token brand in the manifest and dashboards", () => {
+  assert.equal(manifest.displayName, "Trae Use Token");
+  assert.match(publicDashboard, /<h1>Trae Use Token<\/h1>/u);
+  assert.match(extensionDashboard, /<h1>Trae Use Token<\/h1>/u);
+});
 
 for (const [name, source] of [["public dashboard", publicDashboard], ["TRAE webview", extensionDashboard]]) {
   test(`${name} constrains and labels the records scroller`, () => {
