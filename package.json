@@ -3,8 +3,16 @@
   "version": "1.3.0",
   "displayName": "Trae Use Token",
   "description": "在 TRAE 内本地观测模型 Token、缓存命中与实际/估算积分",
-  "publisher": "local",
+  "publisher": "firerlAGI",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/firerlAGI/TraeUseToken.git"
+  },
+  "homepage": "https://github.com/firerlAGI/TraeUseToken#readme",
+  "bugs": {
+    "url": "https://github.com/firerlAGI/TraeUseToken/issues"
+  },
   "type": "module",
   "main": "./extension/extension.cjs",
   "categories": ["Visualization", "Other"],

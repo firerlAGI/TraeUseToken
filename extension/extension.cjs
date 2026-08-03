@@ -6,6 +6,7 @@ const os = require("node:os");
 const { spawn } = require("node:child_process");
 const { pathToFileURL } = require("node:url");
 const { relaunchSpec } = require("./relaunch.cjs");
+const { databaseMigrationCandidates } = require("./storage.cjs");
 
 let ownedRuntime;
 let runtimePromise;
@@ -63,15 +64,18 @@ function databasePath(context) {
   const target = path.join(context.globalStorageUri.fsPath, "usage.db");
   if (fs.existsSync(target)) return target;
 
-  if (process.platform === "darwin") {
-    const legacy = path.join(os.homedir(), "Library", "Application Support", "TraeUsageMonitor", "usage.db");
-    if (fs.existsSync(legacy)) {
-      try {
-        fs.copyFileSync(legacy, target, fs.constants.COPYFILE_EXCL);
-        output?.appendLine(`[migration] 已从旧版迁移数据库：${legacy}`);
-      } catch (error) {
-        output?.appendLine(`[migration] 数据库迁移失败，将使用新数据库：${error.message}`);
-      }
+  const candidates = databaseMigrationCandidates({
+    targetDirectory: context.globalStorageUri.fsPath,
+    platform: process.platform,
+    homeDirectory: os.homedir()
+  });
+  const source = candidates.find((candidate) => fs.existsSync(candidate));
+  if (source) {
+    try {
+      fs.copyFileSync(source, target, fs.constants.COPYFILE_EXCL);
+      output?.appendLine(`[migration] 已从旧版迁移数据库：${source}`);
+    } catch (error) {
+      output?.appendLine(`[migration] 数据库迁移失败，将使用新数据库：${error.message}`);
     }
   }
   return target;
