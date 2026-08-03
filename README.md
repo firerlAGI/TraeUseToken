@@ -11,6 +11,7 @@ TRAE Usage Monitor 是一个非官方、本地优先的 TRAE CN 扩展，用于�
 - 区分 TRAE 返回的实际积分与本地实验估算积分；
 - 捕获 `get_session_usage` 的 `credits_float` 实际账单值；
 - TRAE 内置仪表盘、状态栏摘要和 CSV 导出；
+- 插件内一键保存并重启 TRAE，无需使用终端开启 CDP；
 - 多窗口单实例协调、启动诊断和旧版数据库自动迁移；
 - SQLite 本地持久化，不保存提示词和回答正文。
 
@@ -25,17 +26,15 @@ TRAE Usage Monitor 是一个非官方、本地优先的 TRAE CN 扩展，用于�
 1. 下载发布页中的 `.vsix` 文件；
 2. 打开 TRAE 扩展面板；
 3. 从扩展面板菜单选择“从 VSIX 安装”；
-4. 安装完成后完全退出 TRAE。
+4. 安装完成后打开内置仪表盘，点击“一键启动监听”。
 
 ## 首次启动
 
-TRAE 必须在进程启动时开启本机 CDP 端口。macOS 在终端运行：
+TRAE 必须在进程启动时开启本机 CDP 端口。首次使用时点击状态栏的 `TRAE Usage`，
+再点击“一键启动监听”。插件会在确认后保存已修改文件、带本机 CDP 端口重启 TRAE，
+并重新打开当前工作区。用户不需要打开终端。
 
-```bash
-open -na "TRAE CN" --args --remote-debugging-port=9222
-```
-
-也可以在命令面板运行 `TRAE Usage: 复制 CDP 启动命令`。
+如果系统未找到 TRAE 安装位置，仍可用命令面板中的 `TRAE Usage: 复制 CDP 启动命令` 作为备用方式。
 
 > 扩展无法在 TRAE 已启动后动态打开 Electron 调试端口。CDP 只能绑定在本机使用，
 > 不要将 9222 端口转发或暴露到局域网/公网。
@@ -44,7 +43,7 @@ open -na "TRAE CN" --args --remote-debugging-port=9222
 
 安装并按上述方式重启 TRAE 后：
 
-- 点击状态栏的 `TRAE Usage` 摘要打开内置仪表盘；
+- 未连接时点击状态栏的 `TRAE Usage` 进入一键启动；已连接时点击可打开内置仪表盘；
 - 或运行 `TRAE Usage: 打开内置仪表盘`；
 - 或打开深链接 `trae-cn://local.trae-usage-monitor/dashboard`；
 - 若状态一直异常，运行 `TRAE Usage: 显示诊断信息`；
@@ -79,7 +78,7 @@ POST /api/v1/commercial/get_session_usage
 ## 命令
 
 - `TRAE Usage: 打开内置仪表盘`
-- `TRAE Usage: 启动或修复监听器`
+- `TRAE Usage: 一键启动监听`
 - `TRAE Usage: 导出 CSV`
 - `TRAE Usage: 复制 CDP 启动命令`
 - `TRAE Usage: 显示诊断信息`

@@ -1,6 +1,6 @@
 {
   "name": "trae-usage-monitor",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "displayName": "TRAE Usage Monitor",
   "description": "在 TRAE 内本地观测模型 Token、缓存命中与实际/估算积分",
   "publisher": "local",
@@ -31,7 +31,7 @@
   "contributes": {
     "commands": [
       { "command": "traeUsage.openDashboard", "title": "TRAE Usage: 打开内置仪表盘" },
-      { "command": "traeUsage.startMonitor", "title": "TRAE Usage: 启动或修复监听器" },
+      { "command": "traeUsage.startMonitor", "title": "TRAE Usage: 一键启动监听" },
       { "command": "traeUsage.exportCsv", "title": "TRAE Usage: 导出 CSV" },
       { "command": "traeUsage.copyLaunchCommand", "title": "TRAE Usage: 复制 CDP 启动命令" },
       { "command": "traeUsage.showDiagnostics", "title": "TRAE Usage: 显示诊断信息" }
