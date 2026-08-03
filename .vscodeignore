@@ -1,0 +1,12 @@
+.git/**
+.gitignore
+.github/**
+.vscode/**
+scripts/**
+test/**
+*.tgz
+*.vsix
+data/**
+coverage/**
+.nyc_output/**
+src/cli.mjs

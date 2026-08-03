@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Packaged extension and build output
+*.vsix
+*.tgz
+dist/
+out/
+coverage/
+.nyc_output/
+
+# Local runtime data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.csv
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Logs and diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.cpuprofile
+*.heapsnapshot
+
+# Editor and operating-system files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+.cache/
+.tmp/
+tmp/
+temp/

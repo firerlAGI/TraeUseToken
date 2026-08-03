@@ -1,0 +1,82 @@
+{
+  "name": "trae-usage-monitor",
+  "version": "1.0.0",
+  "displayName": "TRAE Usage Monitor",
+  "description": "在 TRAE 内本地观测模型 Token、缓存命中与实际/估算积分",
+  "publisher": "local",
+  "license": "MIT",
+  "type": "module",
+  "main": "./extension/extension.cjs",
+  "categories": ["Visualization", "Other"],
+  "keywords": ["TRAE", "token", "usage", "credits", "cache", "monitor"],
+  "galleryBanner": { "color": "#0b1712", "theme": "dark" },
+  "pricing": "Free",
+  "packageManager": "npm@11.6.2",
+  "preview": false,
+  "qna": false,
+  "extensionKind": ["ui"],
+  "capabilities": {
+    "untrustedWorkspaces": { "supported": true },
+    "virtualWorkspaces": true
+  },
+  "activationEvents": [
+    "onStartupFinished",
+    "onUri",
+    "onCommand:traeUsage.openDashboard",
+    "onCommand:traeUsage.startMonitor",
+    "onCommand:traeUsage.exportCsv",
+    "onCommand:traeUsage.copyLaunchCommand",
+    "onCommand:traeUsage.showDiagnostics"
+  ],
+  "contributes": {
+    "commands": [
+      { "command": "traeUsage.openDashboard", "title": "TRAE Usage: 打开内置仪表盘" },
+      { "command": "traeUsage.startMonitor", "title": "TRAE Usage: 启动或修复监听器" },
+      { "command": "traeUsage.exportCsv", "title": "TRAE Usage: 导出 CSV" },
+      { "command": "traeUsage.copyLaunchCommand", "title": "TRAE Usage: 复制 CDP 启动命令" },
+      { "command": "traeUsage.showDiagnostics", "title": "TRAE Usage: 显示诊断信息" }
+    ],
+    "configuration": {
+      "title": "TRAE Usage Monitor",
+      "properties": {
+        "traeUsage.cdpPort": {
+          "type": "number",
+          "default": 9222,
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "TRAE Electron 的本机 CDP 调试端口；修改后需要按新端口重启 TRAE"
+        },
+        "traeUsage.servicePort": {
+          "type": "number",
+          "default": 4317,
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "扩展用于多窗口协调的本机回环服务端口"
+        },
+        "traeUsage.autoStart": {
+          "type": "boolean",
+          "default": true,
+          "description": "TRAE 启动后自动启动本地监听运行时"
+        },
+        "traeUsage.debuggerEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用 reportTokenUsage 调试断点兜底；关闭后只监听网络响应"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "start": "node src/cli.mjs",
+    "demo": "node src/cli.mjs --mock --open=false",
+    "check": "node --check extension/extension.cjs && node --check src/runtime.mjs && node --test",
+    "test": "node --test",
+    "package:vsix": "npm run check && vsce package"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "3.9.2"
+  },
+  "engines": {
+    "vscode": "^1.107.0"
+  }
+}
