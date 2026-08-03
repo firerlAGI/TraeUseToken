@@ -36,6 +36,18 @@ jobs:
       - name: Test extension
         run: npm run check
 
+      - name: Ensure Open VSX namespace exists
+        env:
+          TRAE_USE_TOKEN_OVSX_PAT: ${{ secrets.OPEN_VSX_TOKEN }}
+        run: |
+          status=$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" https://open-vsx.org/api/firerlAGI || true)
+          if [ "$status" = "404" ]; then
+            npx --yes ovsx@1.1.0 create-namespace firerlAGI -p "$TRAE_USE_TOKEN_OVSX_PAT"
+          elif [ "$status" != "200" ]; then
+            echo "Unable to verify Open VSX namespace (HTTP $status)" >&2
+            exit 1
+          fi
+
       - name: Publish to Open VSX
         uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2
         with:
