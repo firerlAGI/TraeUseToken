@@ -1,6 +1,6 @@
 {
   "name": "trae-usage-monitor",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "displayName": "TRAE Usage Monitor",
   "description": "在 TRAE 内本地观测模型 Token、缓存命中与实际/估算积分",
   "publisher": "local",
