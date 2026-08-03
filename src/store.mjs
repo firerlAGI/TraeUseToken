@@ -135,34 +135,39 @@ export class UsageStore extends EventEmitter {
       FROM calls WHERE id = ?`).get(id);
   }
 
-  recent(limit = 100) {
-    return this.db.prepare(`SELECT id, observed_at, source, target_id, request_id, endpoint, model,
+  recent(limit = 100, since = null) {
+    const query = `SELECT id, observed_at, source, target_id, request_id, endpoint, model,
       prompt_tokens, completion_tokens, total_tokens, cached_tokens, cache_write_tokens,
       credits, credit_kind, multiplier, session_id, user_message_id, agent_message_id, billing_id
-      FROM calls ORDER BY id DESC LIMIT ?`).all(Math.min(1000, Math.max(1, limit)));
+      FROM calls ${since ? "WHERE observed_at >= ?" : ""} ORDER BY id DESC LIMIT ?`;
+    const capped = Math.min(1000, Math.max(1, limit));
+    return since ? this.db.prepare(query).all(since, capped) : this.db.prepare(query).all(capped);
   }
 
-  summary() {
-    const total = this.db.prepare(`
+  summary(since = null) {
+    const where = since ? "WHERE observed_at >= ?" : "";
+    const totalQuery = `
       SELECT COUNT(*) calls, COALESCE(SUM(total_tokens), 0) total_tokens,
         COALESCE(SUM(prompt_tokens), 0) prompt_tokens,
         COALESCE(SUM(completion_tokens), 0) completion_tokens,
         COALESCE(SUM(cached_tokens), 0) cached_tokens,
         COALESCE(SUM(CASE WHEN credit_kind = 'actual' THEN credits ELSE 0 END), 0) actual_credits,
         COALESCE(SUM(CASE WHEN credit_kind = 'estimated' THEN credits ELSE 0 END), 0) estimated_credits
-      FROM calls
-    `).get();
-    const models = this.db.prepare(`
+      FROM calls ${where}`;
+    const modelQuery = `
       SELECT model, COUNT(*) calls, SUM(total_tokens) total_tokens, SUM(cached_tokens) cached_tokens,
         SUM(CASE WHEN credit_kind = 'actual' THEN credits ELSE 0 END) actual_credits,
         SUM(CASE WHEN credit_kind = 'estimated' THEN credits ELSE 0 END) estimated_credits
-      FROM calls GROUP BY model ORDER BY total_tokens DESC
-    `).all();
+      FROM calls ${where} GROUP BY model ORDER BY total_tokens DESC`;
+    const total = since ? this.db.prepare(totalQuery).get(since) : this.db.prepare(totalQuery).get();
+    const models = since ? this.db.prepare(modelQuery).all(since) : this.db.prepare(modelQuery).all();
     return { total, models };
   }
 
-  csv() {
-    const rows = this.db.prepare("SELECT * FROM calls ORDER BY id").all();
+  csv(since = null) {
+    const rows = since
+      ? this.db.prepare("SELECT * FROM calls WHERE observed_at >= ? ORDER BY id").all(since)
+      : this.db.prepare("SELECT * FROM calls ORDER BY id").all();
     const headers = ["id", "observed_at", "model", "prompt_tokens", "completion_tokens", "total_tokens",
       "cached_tokens", "cache_write_tokens", "credits", "credit_kind", "multiplier", "source", "endpoint"];
     const cell = (value) => {

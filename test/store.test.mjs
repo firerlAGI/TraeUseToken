@@ -40,3 +40,19 @@ test("late TRAE billing replaces the matching estimate", () => {
   assert.equal(merged.billing_id, "turn-1");
   store.close();
 });
+
+test("filters summaries, recent calls and CSV by start time", () => {
+  const directory = mkdtempSync(join(tmpdir(), "trae-monitor-range-test-"));
+  const store = new UsageStore(join(directory, "usage.db"));
+  store.record({ model: "Seed-Code", promptTokens: 100, completionTokens: 1, totalTokens: 101,
+    source: "debugger", observedAt: "2026-07-31T23:00:00.000Z" });
+  store.record({ model: "GLM-5.2", promptTokens: 200, completionTokens: 2, totalTokens: 202,
+    source: "debugger", observedAt: "2026-08-03T02:00:00.000Z" });
+  const since = "2026-08-01T00:00:00.000Z";
+  assert.equal(store.summary(since).total.calls, 1);
+  assert.equal(store.summary(since).total.total_tokens, 202);
+  assert.equal(store.recent(100, since).length, 1);
+  assert.doesNotMatch(store.csv(since), /Seed-Code/u);
+  assert.match(store.csv(since), /GLM-5\.2/u);
+  store.close();
+});
