@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.2 - 2026-08-04
+
+- Windows 一键启动优先从 TRAE 的 `appRoot` 和当前进程定位 `Trae CN.exe`，支持自定义盘符和安装目录。
+- 扩充 Windows 用户级、系统级和兼容目录的自动探测候选。
+- 自动探测失败时允许用户选择一次 `Trae CN.exe` 并记住路径，不再直接报“未找到安装位置”。
+- 诊断信息新增应用根目录和检测到的 Windows 可执行文件路径。
+
 ## 1.3.1 - 2026-08-04
 
 - 发布者 ID 与既有 Visual Studio Marketplace 发布者统一为 `firerl`。

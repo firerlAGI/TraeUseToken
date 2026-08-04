@@ -17,6 +17,7 @@ let dashboardSnapshotVersion = 0;
 let output;
 let activeContext;
 let statusBar;
+const WINDOWS_EXECUTABLE_KEY = "traeUsage.windowsExecutablePath";
 
 function config() {
   const value = vscode.workspace.getConfiguration("traeUsage");
@@ -144,7 +145,11 @@ async function snapshot(range = dashboardRange) {
 function launchCommand() {
   const port = config().cdpPort;
   if (process.platform === "darwin") return `open -na "TRAE CN" --args --remote-debugging-port=${port}`;
-  if (process.platform === "win32") return `"%LOCALAPPDATA%\\Programs\\TRAE CN\\TRAE CN.exe" --remote-debugging-port=${port}`;
+  if (process.platform === "win32") {
+    const spec = platformRelaunchSpec();
+    const command = spec.candidates.find((candidate) => fs.existsSync(candidate)) || spec.candidates[0];
+    return `"${command || "%LOCALAPPDATA%\\Programs\\Trae CN\\Trae CN.exe"}" --remote-debugging-port=${port}`;
+  }
   return `trae-cn --remote-debugging-port=${port}`;
 }
 
@@ -161,16 +166,42 @@ function currentWorkspace() {
   };
 }
 
-function resolveRelaunchSpec() {
-  const spec = relaunchSpec({
+function platformRelaunchSpec() {
+  return relaunchSpec({
     platform: process.platform,
     port: config().cdpPort,
     ...currentWorkspace(),
-    env: process.env
+    env: process.env,
+    execPath: process.execPath,
+    appRoot: vscode.env.appRoot,
+    storedExecutable: activeContext?.globalState.get(WINDOWS_EXECUTABLE_KEY)
   });
+}
+
+async function resolveRelaunchSpec() {
+  const spec = platformRelaunchSpec();
   if (!spec.candidates) return spec;
   const command = spec.candidates.find((candidate) => fs.existsSync(candidate));
-  return command ? { command, args: spec.args } : null;
+  if (command) {
+    await activeContext.globalState.update(WINDOWS_EXECUTABLE_KEY, command);
+    return { command, args: spec.args };
+  }
+
+  const selected = await vscode.window.showOpenDialog({
+    title: "选择 TRAE CN 可执行文件",
+    openLabel: "选择 Trae CN.exe",
+    canSelectFiles: true,
+    canSelectFolders: false,
+    canSelectMany: false,
+    filters: { "Windows 应用程序": ["exe"] }
+  });
+  if (!selected?.length) return null;
+  const selectedPath = selected[0].fsPath;
+  if (!/^trae(?: cn)?\.exe$/i.test(path.win32.basename(selectedPath))) {
+    throw new Error("请选择 TRAE 安装目录中的 Trae CN.exe");
+  }
+  await activeContext.globalState.update(WINDOWS_EXECUTABLE_KEY, selectedPath);
+  return { command: selectedPath, args: spec.args };
 }
 
 function spawnRelaunch(spec) {
@@ -203,7 +234,7 @@ async function oneClickStart() {
       vscode.window.showWarningMessage("仍有文件未保存，已取消重启");
       return;
     }
-    const spec = resolveRelaunchSpec();
+    const spec = await resolveRelaunchSpec();
     if (!spec) throw new Error("未找到 TRAE CN 安装位置");
     await spawnRelaunch(spec);
     output?.appendLine(`[startup] 一键重启：${spec.command} ${spec.args.join(" ")}`);
@@ -315,6 +346,11 @@ async function showDiagnostics() {
   output.appendLine(`TRAE: ${vscode.version}`);
   output.appendLine(`Node: ${process.versions.node}`);
   output.appendLine(`Platform: ${process.platform} ${process.arch}`);
+  output.appendLine(`App root: ${vscode.env.appRoot}`);
+  if (process.platform === "win32") {
+    const detected = platformRelaunchSpec().candidates.find((candidate) => fs.existsSync(candidate));
+    output.appendLine(`TRAE executable: ${detected || "not detected"}`);
+  }
   output.appendLine(`CDP port: ${config().cdpPort}`);
   output.appendLine(`Service port: ${config().servicePort}`);
   output.appendLine(`Database: ${databasePath(activeContext)}`);

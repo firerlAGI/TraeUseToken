@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { relaunchSpec, workspaceArgument } = require("../extension/relaunch.cjs");
+const { relaunchSpec, windowsExecutableCandidates, workspaceArgument } = require("../extension/relaunch.cjs");
 const { databaseMigrationCandidates } = require("../extension/storage.cjs");
 
 test("prefers a workspace file and preserves a folder fallback", () => {
@@ -18,8 +18,24 @@ test("builds a macOS one-click TRAE relaunch without a shell", () => {
 
 test("builds Windows executable candidates from standard install roots", () => {
   const spec = relaunchSpec({ platform: "win32", port: 9333, env: { LOCALAPPDATA: "C:\\Users\\fire\\AppData\\Local" } });
-  assert.equal(spec.candidates[0], "C:\\Users\\fire\\AppData\\Local\\Programs\\TRAE CN\\TRAE CN.exe");
+  assert.equal(spec.candidates[0], "C:\\Users\\fire\\AppData\\Local\\Programs\\Trae CN\\Trae CN.exe");
   assert.deepEqual(spec.args, ["--remote-debugging-port=9333"]);
+});
+
+test("prefers a remembered Windows executable and the running TRAE executable", () => {
+  const candidates = windowsExecutableCandidates({
+    storedExecutable: "E:\\Apps\\Trae CN\\Trae CN.exe",
+    execPath: "D:\\Trae CN\\Trae CN.exe"
+  });
+  assert.deepEqual(candidates.slice(0, 2), [
+    "E:\\Apps\\Trae CN\\Trae CN.exe",
+    "D:\\Trae CN\\Trae CN.exe"
+  ]);
+});
+
+test("derives a custom Windows install directory from vscode appRoot", () => {
+  const candidates = windowsExecutableCandidates({ appRoot: "D:\\Trae CN\\resources\\app" });
+  assert.equal(candidates[0], "D:\\Trae CN\\Trae CN.exe");
 });
 
 test("finds previous public and local publisher databases before the legacy macOS path", () => {
