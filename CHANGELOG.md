@@ -4,6 +4,7 @@
 
 - 插件品牌名称由 “TRAE Usage Monitor” 统一更新为 “Trae Use Token”。
 - 同步更新扩展名称、仪表盘、状态栏、命令、诊断输出和分发文档。
+- 增加 Visual Studio Marketplace 自动发布流程，使扩展可在 TRAE CN 扩展面板中被搜索发现。
 - 正式发布者更新为 `firerlAGI`，并绑定公开 GitHub 仓库和 Open VSX 自动发布流程。
 - 商店版首次启动时自动迁移 `local.trae-usage-monitor` 测试版历史数据库。
 - 保留内部名称和命令 ID，确保功能配置兼容。
