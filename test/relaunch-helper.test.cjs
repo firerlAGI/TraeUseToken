@@ -5,6 +5,7 @@ const {
   decodeLaunchPayload,
   encodeLaunchPayload,
   processIsRunning,
+  requiresDelayedRelaunch,
   waitForProcessExit
 } = require("../extension/relaunch-helper.cjs");
 
@@ -23,6 +24,12 @@ test("removes helper-only Electron and CLI variables from the relaunched app", (
     VSCODE_IPC_HOOK_CLI: "pipe",
     USERPROFILE: "C:\\Users\\fire"
   }), { USERPROFILE: "C:\\Users\\fire" });
+});
+
+test("delays relaunch on both Windows and macOS to avoid Electron's instance lock", () => {
+  assert.equal(requiresDelayedRelaunch("win32"), true);
+  assert.equal(requiresDelayedRelaunch("darwin"), true);
+  assert.equal(requiresDelayedRelaunch("linux"), false);
 });
 
 test("detects the current process and resolves immediately for an exited process", async () => {

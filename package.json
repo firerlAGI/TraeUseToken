@@ -1,6 +1,6 @@
 {
   "name": "trae-use-token",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "displayName": "Trae Use Token",
   "description": "在 TRAE 内本地观测模型 Token、缓存命中与实际/估算积分",
   "publisher": "firerl",

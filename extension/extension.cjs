@@ -6,7 +6,7 @@ const os = require("node:os");
 const { spawn } = require("node:child_process");
 const { pathToFileURL } = require("node:url");
 const { relaunchSpec } = require("./relaunch.cjs");
-const { encodeLaunchPayload } = require("./relaunch-helper.cjs");
+const { encodeLaunchPayload, requiresDelayedRelaunch } = require("./relaunch-helper.cjs");
 const { databaseMigrationCandidates } = require("./storage.cjs");
 
 let ownedRuntime;
@@ -207,15 +207,16 @@ async function resolveRelaunchSpec() {
 
 function spawnRelaunch(spec) {
   return new Promise((resolve, reject) => {
-    const delayedWindowsRelaunch = process.platform === "win32";
+    const delayedRelaunch = requiresDelayedRelaunch(process.platform);
+    const hideWindow = process.platform === "win32";
     const helperPath = path.join(activeContext.extensionPath, "extension", "relaunch-helper.cjs");
     const payload = encodeLaunchPayload({ parentPid: process.pid, command: spec.command, args: spec.args });
-    const command = delayedWindowsRelaunch ? process.execPath : spec.command;
-    const args = delayedWindowsRelaunch ? [helperPath, payload] : spec.args;
-    const env = delayedWindowsRelaunch
+    const command = delayedRelaunch ? process.execPath : spec.command;
+    const args = delayedRelaunch ? [helperPath, payload] : spec.args;
+    const env = delayedRelaunch
       ? { ...process.env, ELECTRON_RUN_AS_NODE: "1" }
       : process.env;
-    const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: delayedWindowsRelaunch, env });
+    const child = spawn(command, args, { detached: true, stdio: "ignore", windowsHide: hideWindow, env });
     child.once("error", reject);
     child.once("spawn", () => {
       child.unref();
@@ -246,7 +247,7 @@ async function oneClickStart() {
     const spec = await resolveRelaunchSpec();
     if (!spec) throw new Error("未找到 TRAE CN 安装位置");
     await spawnRelaunch(spec);
-    output?.appendLine(`[startup] 一键重启：${spec.command} ${spec.args.join(" ")}${process.platform === "win32" ? "（等待当前 TRAE 退出后启动）" : ""}`);
+    output?.appendLine(`[startup] 一键重启：${spec.command} ${spec.args.join(" ")}${requiresDelayedRelaunch(process.platform) ? "（等待当前 TRAE 退出后启动）" : ""}`);
     await vscode.commands.executeCommand("workbench.action.quit");
   } catch (error) {
     const action = await vscode.window.showErrorMessage(`一键启动失败：${error.message}`, "复制备用启动命令");

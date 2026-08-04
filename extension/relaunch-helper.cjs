@@ -21,6 +21,10 @@ function applicationEnvironment(source = process.env) {
   return env;
 }
 
+function requiresDelayedRelaunch(platform) {
+  return platform === "win32" || platform === "darwin";
+}
+
 function processIsRunning(pid) {
   try {
     process.kill(pid, 0);
@@ -40,7 +44,7 @@ async function waitForProcessExit(pid, { interval = 200, timeout = 30000 } = {})
 
 async function relaunchAfterExit(payload) {
   await waitForProcessExit(payload.parentPid);
-  // The extension host exits slightly before Electron releases its Windows
+  // The extension host exits slightly before Electron releases its
   // single-instance lock. Starting immediately can make the replacement
   // process forward its arguments to the dying instance and then disappear.
   await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -65,6 +69,7 @@ module.exports = {
   decodeLaunchPayload,
   encodeLaunchPayload,
   processIsRunning,
+  requiresDelayedRelaunch,
   relaunchAfterExit,
   waitForProcessExit
 };

@@ -29,7 +29,7 @@ Trae Use Token 是一个非官方、本地优先的 TRAE CN 扩展，用于观�
 可在扩展面板搜索 `Trae Use Token` 或 `@id:firerl.trae-use-token` 并点击“安装”。
 
 如果 TRAE 商店暂时搜索不到或尚未同步最新版，可从
-[GitHub Release 下载 VSIX](https://github.com/firerlAGI/TraeUseToken/releases/download/v1.3.3/trae-use-token-1.3.3.vsix)，
+[GitHub Release 下载 VSIX](https://github.com/firerlAGI/TraeUseToken/releases/download/v1.3.4/trae-use-token-1.3.4.vsix)，
 再从 TRAE 扩展面板右上角菜单选择“从 VSIX 安装”。安装完成后打开内置仪表盘，
 点击“一键启动监听”。
 
@@ -38,6 +38,8 @@ Trae Use Token 是一个非官方、本地优先的 TRAE CN 扩展，用于观�
 TRAE 必须在进程启动时开启本机 CDP 端口。首次使用时点击状态栏的 `Trae Use Token`，
 再点击“一键启动监听”。插件会在确认后保存已修改文件、带本机 CDP 端口重启 TRAE，
 并重新打开当前工作区。用户不需要打开终端。
+
+macOS 与 Windows 都会等待当前 TRAE 完全退出并释放单实例锁，再自动启动带 CDP 参数的新实例。
 
 如果系统未找到 TRAE 安装位置，仍可用命令面板中的 `Trae Use Token: 复制 CDP 启动命令` 作为备用方式。
 Windows 自定义安装盘符或目录会自动从 TRAE 的应用根目录识别；若仍无法识别，选择一次安装目录中的
