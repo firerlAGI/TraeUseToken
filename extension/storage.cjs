@@ -2,6 +2,7 @@ const path = require("node:path");
 
 function databaseMigrationCandidates({ targetDirectory, platform, homeDirectory }) {
   const candidates = [
+    path.join(path.dirname(targetDirectory), "firerlAGI.trae-usage-monitor", "usage.db"),
     path.join(path.dirname(targetDirectory), "local.trae-usage-monitor", "usage.db")
   ];
   if (platform === "darwin" && homeDirectory) {

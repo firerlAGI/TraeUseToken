@@ -8,7 +8,7 @@ const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.
 
 test("uses the Trae Use Token brand in the manifest and dashboards", () => {
   assert.equal(manifest.displayName, "Trae Use Token");
-  assert.equal(manifest.publisher, "firerlAGI");
+  assert.equal(manifest.publisher, "firerl");
   assert.equal(manifest.repository.url, "https://github.com/firerlAGI/TraeUseToken.git");
   assert.match(publicDashboard, /<h1>Trae Use Token<\/h1>/u);
   assert.match(extensionDashboard, /<h1>Trae Use Token<\/h1>/u);

@@ -22,12 +22,13 @@ test("builds Windows executable candidates from standard install roots", () => {
   assert.deepEqual(spec.args, ["--remote-debugging-port=9333"]);
 });
 
-test("finds the previous local publisher database before the legacy macOS path", () => {
+test("finds previous public and local publisher databases before the legacy macOS path", () => {
   assert.deepEqual(databaseMigrationCandidates({
-    targetDirectory: "/Users/fire/Library/Application Support/Trae/User/globalStorage/firerlAGI.trae-usage-monitor",
+    targetDirectory: "/Users/fire/Library/Application Support/Trae/User/globalStorage/firerl.trae-usage-monitor",
     platform: "darwin",
     homeDirectory: "/Users/fire"
   }), [
+    "/Users/fire/Library/Application Support/Trae/User/globalStorage/firerlAGI.trae-usage-monitor/usage.db",
     "/Users/fire/Library/Application Support/Trae/User/globalStorage/local.trae-usage-monitor/usage.db",
     "/Users/fire/Library/Application Support/TraeUsageMonitor/usage.db"
   ]);

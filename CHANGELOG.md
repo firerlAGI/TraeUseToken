@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1 - 2026-08-04
+
+- 发布者 ID 与既有 Visual Studio Marketplace 发布者统一为 `firerl`。
+- 保留 `firerlAGI` 和 `local` 旧发布者目录的本地数据库迁移。
+- 同时发布到 Visual Studio Marketplace 与 Open VSX，以支持 TRAE CN 商店搜索和安装。
+
 ## 1.3.0 - 2026-08-03
 
 - 插件品牌名称由 “TRAE Usage Monitor” 统一更新为 “Trae Use Token”。
