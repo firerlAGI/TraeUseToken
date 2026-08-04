@@ -31,6 +31,12 @@ Never commit or paste the token into an issue, log, or chat.
 The token is only passed to `vsce` inside GitHub Actions. Never commit it or paste it into logs,
 issues, or chat.
 
+If the Microsoft account cannot create an Azure DevOps organization without an Azure subscription,
+do not purchase a subscription only for publishing. Package the extension with
+`npm run package:vsix`, then open the Marketplace publisher portal and select
+`New extension → Visual Studio Code` to upload the VSIX manually. The Marketplace workflow skips
+cleanly when `VSCE_PAT` is not configured.
+
 ## Publish a version
 
 1. Update `version` in `package.json` and `package-lock.json` and update `CHANGELOG.md`.

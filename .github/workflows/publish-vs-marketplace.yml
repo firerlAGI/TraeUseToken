@@ -39,4 +39,9 @@ jobs:
       - name: Publish to Visual Studio Marketplace
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx --no-install vsce publish --skip-duplicate
+        run: |
+          if [ -z "${VSCE_PAT:-}" ]; then
+            echo "::notice::VSCE_PAT is not configured; publish the packaged VSIX manually from the Marketplace publisher portal."
+            exit 0
+          fi
+          npx --no-install vsce publish --skip-duplicate
