@@ -24,10 +24,11 @@ test("builds Windows executable candidates from standard install roots", () => {
 
 test("finds previous public and local publisher databases before the legacy macOS path", () => {
   assert.deepEqual(databaseMigrationCandidates({
-    targetDirectory: "/Users/fire/Library/Application Support/Trae/User/globalStorage/firerl.trae-usage-monitor",
+    targetDirectory: "/Users/fire/Library/Application Support/Trae/User/globalStorage/firerl.trae-use-token",
     platform: "darwin",
     homeDirectory: "/Users/fire"
   }), [
+    "/Users/fire/Library/Application Support/Trae/User/globalStorage/firerl.trae-usage-monitor/usage.db",
     "/Users/fire/Library/Application Support/Trae/User/globalStorage/firerlAGI.trae-usage-monitor/usage.db",
     "/Users/fire/Library/Application Support/Trae/User/globalStorage/local.trae-usage-monitor/usage.db",
     "/Users/fire/Library/Application Support/TraeUsageMonitor/usage.db"

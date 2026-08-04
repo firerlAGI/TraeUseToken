@@ -29,11 +29,11 @@ jobs:
         run: npm run check
 
       - name: Package VSIX
-        run: npm run package:vsix -- --allow-missing-repository --out trae-usage-monitor-${{ github.ref_name }}.vsix
+        run: npm run package:vsix -- --allow-missing-repository --out trae-use-token-${{ github.ref_name }}.vsix
 
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4
         with:
-          name: trae-usage-monitor-${{ github.ref_name }}
-          path: trae-usage-monitor-*.vsix
+          name: trae-use-token-${{ github.ref_name }}
+          path: trae-use-token-*.vsix
           if-no-files-found: error

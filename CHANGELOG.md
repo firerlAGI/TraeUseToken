@@ -3,6 +3,7 @@
 ## 1.3.1 - 2026-08-04
 
 - 发布者 ID 与既有 Visual Studio Marketplace 发布者统一为 `firerl`。
+- 内部扩展名称调整为全市场唯一的 `trae-use-token`，显示名称保持 “Trae Use Token”。
 - 保留 `firerlAGI` 和 `local` 旧发布者目录的本地数据库迁移。
 - 同时发布到 Visual Studio Marketplace 与 Open VSX，以支持 TRAE CN 商店搜索和安装。
 

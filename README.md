@@ -46,7 +46,7 @@ TRAE 必须在进程启动时开启本机 CDP 端口。首次使用时点击状�
 
 - 未连接时点击状态栏的 `Trae Use Token` 进入一键启动；已连接时点击可打开内置仪表盘；
 - 或运行 `Trae Use Token: 打开内置仪表盘`；
-- 或打开深链接 `trae-cn://firerl.trae-usage-monitor/dashboard`；
+- 或打开深链接 `trae-cn://firerl.trae-use-token/dashboard`；
 - 若状态一直异常，运行 `Trae Use Token: 显示诊断信息`；
 - 运行 `Trae Use Token: 导出 CSV` 保存本地记录。
 
@@ -71,7 +71,7 @@ POST /api/v1/commercial/get_session_usage
 ## 本地数据与隐私
 
 数据库保存在 TRAE 分配给扩展的全局存储目录。首次安装商店版时，会自动迁移
-`firerlAGI.trae-usage-monitor`、`local.trae-usage-monitor` 测试版以及旧版 macOS 数据库。
+`firerl.trae-usage-monitor`、`firerlAGI.trae-usage-monitor`、`local.trae-usage-monitor` 测试版以及旧版 macOS 数据库。
 
 扩展不包含遥测或云端同步，不持久化提示词、回答正文、Cookie、授权头和原始网络响应。
 为准确去重，数据库会保存不可读的会话/消息标识；这些标识不会出现在 CSV 中。
