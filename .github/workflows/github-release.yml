@@ -1,0 +1,58 @@
+name: Publish GitHub Release
+
+on:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - main
+    paths:
+      - ".github/workflows/github-release.yml"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag
+        required: true
+        default: v1.3.1
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag || 'v1.3.1' }}
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test and package VSIX
+        run: npm run package:vsix
+
+      - name: Resolve package filename
+        run: echo "VSIX_NAME=trae-use-token-$(node -p \"require('./package.json').version\").vsix" >> "$GITHUB_ENV"
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$VSIX_NAME" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$VSIX_NAME" \
+              --title "Trae Use Token $RELEASE_TAG" \
+              --notes "正式版。支持在 TRAE 内本地观测模型 Token、缓存命中与实际/估算积分；提供日、本周、月和全部记录视图，以及内置仪表盘和一键启动监听。若 TRAE 商店暂时未同步，可下载本页 VSIX 后选择‘从 VSIX 安装’。" \
+              --latest
+          fi
