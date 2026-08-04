@@ -29,7 +29,7 @@ Trae Use Token 是一个非官方、本地优先的 TRAE CN 扩展，用于观�
 可在扩展面板搜索 `Trae Use Token` 或 `@id:firerl.trae-use-token` 并点击“安装”。
 
 如果 TRAE 商店暂时搜索不到，可从
-[Open VSX 下载 VSIX](https://open-vsx.org/api/firerl/trae-use-token/1.3.2/file/firerl.trae-use-token-1.3.2.vsix)，
+[Open VSX 下载 VSIX](https://open-vsx.org/api/firerl/trae-use-token/1.3.3/file/firerl.trae-use-token-1.3.3.vsix)，
 再从 TRAE 扩展面板右上角菜单选择“从 VSIX 安装”。安装完成后打开内置仪表盘，
 点击“一键启动监听”。
 
@@ -41,7 +41,8 @@ TRAE 必须在进程启动时开启本机 CDP 端口。首次使用时点击状�
 
 如果系统未找到 TRAE 安装位置，仍可用命令面板中的 `Trae Use Token: 复制 CDP 启动命令` 作为备用方式。
 Windows 自定义安装盘符或目录会自动从 TRAE 的应用根目录识别；若仍无法识别，选择一次安装目录中的
-`Trae CN.exe` 即可，扩展会记住该路径。
+`Trae CN.exe` 即可，扩展会记住该路径。Windows 上点击确认后，隐藏的重启助手会等待当前 TRAE
+完全退出并释放单实例锁，再自动启动带 CDP 参数的新实例；无需再次手动启动 TRAE。
 
 > 扩展无法在 TRAE 已启动后动态打开 Electron 调试端口。CDP 只能绑定在本机使用，
 > 不要将 9222 端口转发或暴露到局域网/公网。
