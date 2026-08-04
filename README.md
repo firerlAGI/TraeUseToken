@@ -24,10 +24,14 @@ Trae Use Token 是一个非官方、本地优先的 TRAE CN 扩展，用于观�
 
 ## 安装
 
-正式发布后，在 TRAE 扩展面板搜索 `Trae Use Token` 并点击“安装”。安装完成后打开内置仪表盘，
-点击“一键启动监听”。
+扩展已经发布到 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=firerl.trae-use-token)
+和 [Open VSX](https://open-vsx.org/extension/firerl/trae-use-token)。TRAE 官方扩展镜像完成同步后，
+可在扩展面板搜索 `Trae Use Token` 或 `@id:firerl.trae-use-token` 并点击“安装”。
 
-开发版仍可下载发布页中的 `.vsix` 文件，再从扩展面板菜单选择“从 VSIX 安装”。
+如果 TRAE 商店暂时搜索不到，可从
+[Open VSX 下载 VSIX](https://open-vsx.org/api/firerl/trae-use-token/1.3.1/file/firerl.trae-use-token-1.3.1.vsix)，
+再从 TRAE 扩展面板右上角菜单选择“从 VSIX 安装”。安装完成后打开内置仪表盘，
+点击“一键启动监听”。
 
 ## 首次启动
 
