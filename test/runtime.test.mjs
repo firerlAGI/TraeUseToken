@@ -40,3 +40,42 @@ test("self-contained runtime exposes versioned health and connects to CDP discov
     await new Promise((resolve) => discovery.close(resolve));
   }
 });
+
+test("native snapshots record credit deltas without CDP and deduplicate multiple windows", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "trae-monitor-native-test-"));
+  const runtime = await startUsageRuntime({
+    dbPath: join(directory, "usage.db"),
+    cdpPort: 65534,
+    dashboardPort: 0,
+    version: "1.4.0"
+  });
+  try {
+    const baseline = { used: 10, remaining: 90, reason: "baseline", observedAt: "2026-09-02T00:00:00.000Z" };
+    await fetch(`${runtime.dashboardUrl}/api/native-snapshot`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(baseline)
+    });
+    const first = await fetch(`${runtime.dashboardUrl}/api/native-snapshot`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ used: 10.25, remaining: 89.75, reason: "task", taskId: "task-1" })
+    }).then((response) => response.json());
+    const duplicate = await fetch(`${runtime.dashboardUrl}/api/native-snapshot`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ used: 10.25, remaining: 89.75, reason: "task", taskId: "task-1" })
+    }).then((response) => response.json());
+    const secondWindowBaseline = await fetch(`${runtime.dashboardUrl}/api/native-snapshot`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ used: 50, remaining: 50, reason: "baseline" })
+    }).then((response) => response.json());
+    const health = await fetch(`${runtime.dashboardUrl}/api/health`).then((response) => response.json());
+    assert.equal(first.recorded, true);
+    assert.equal(duplicate.recorded, false);
+    assert.equal(secondWindowBaseline.recorded, false);
+    assert.equal(runtime.state.nativeCreditsUsed, 10.25);
+    assert.equal(runtime.store.summary().total.calls, 1);
+    assert.equal(runtime.store.summary().total.actual_credits, 0.25);
+    assert.equal(health.nativeAvailable, true);
+    assert.equal(health.mode, "native");
+  } finally {
+    await runtime.stop();
+  }
+});

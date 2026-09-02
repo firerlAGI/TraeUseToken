@@ -20,7 +20,15 @@ export async function startUsageRuntime({
     breakpointCount: 0,
     lastError: null,
     lastUsageAt: null,
-    mode: "cdp"
+    mode: "waiting",
+    nativeAvailable: false,
+    nativeCreditsUsed: null,
+    nativeCreditsRemaining: null,
+    lastNativeAt: null,
+    lastNativeDelta: null,
+    cdpPort,
+    dashboardPort,
+    pid: process.pid
   };
   const monitor = new TraeMonitor({ host, port: cdpPort, debugger: debuggerEnabled });
   let stopped = false;
@@ -29,6 +37,7 @@ export async function startUsageRuntime({
     state.cdpConnected = connected;
     state.cdpTargets = targetCount;
     state.lastError = error ?? null;
+    state.mode = connected ? "cdp" : state.nativeAvailable ? "native" : "waiting";
   });
   monitor.on("usage", (usage) => {
     const row = store.record(usage);
@@ -44,11 +53,45 @@ export async function startUsageRuntime({
     }
   });
 
+  async function applyNativeSnapshot(snapshot) {
+    const used = Number(snapshot?.used);
+    if (!Number.isFinite(used) || used < 0) throw new Error("invalid native credits snapshot");
+    const previous = state.nativeCreditsUsed;
+    state.nativeAvailable = true;
+    state.lastNativeAt = snapshot.observedAt ?? new Date().toISOString();
+    state.mode = state.cdpConnected ? "cdp" : "native";
+    if (snapshot.reason === "baseline" && previous !== null) {
+      return { recorded: false, mode: state.mode };
+    }
+    state.nativeCreditsUsed = used;
+    state.nativeCreditsRemaining = Number.isFinite(snapshot.remaining) ? snapshot.remaining : null;
+    if (previous === null || used <= previous || snapshot.reason === "baseline") {
+      return { recorded: false, mode: state.mode };
+    }
+    const delta = used - previous;
+    state.lastNativeDelta = delta;
+    if (state.cdpConnected) return { recorded: false, mode: state.mode, delta };
+    const row = store.record({
+      source: "native",
+      model: snapshot.model || "TRAE 原生积分",
+      credits: delta,
+      observedAt: snapshot.observedAt,
+      sessionId: snapshot.sessionId,
+      userMessageId: snapshot.userMessageId,
+      agentMessageId: snapshot.agentMessageId,
+      billingId: snapshot.taskId
+    });
+    state.lastUsageAt = row.observed_at;
+    onLog(`[native] 实际积分 +${delta.toFixed(4)}`);
+    return { recorded: true, mode: state.mode, delta };
+  }
+
   const dashboard = createDashboardServer({
     store,
     host,
     port: dashboardPort,
-    getStatus: () => state
+    getStatus: () => state,
+    onNativeSnapshot: applyNativeSnapshot
   });
 
   let dashboardUrl;

@@ -83,12 +83,14 @@ export class UsageStore extends EventEmitter {
     }
 
     // Merge the same observation reported by Network and Debugger within five seconds.
-    duplicate ??= this.db.prepare(`
-      SELECT * FROM calls
-      WHERE model = ? AND total_tokens = ? AND prompt_tokens = ? AND completion_tokens = ?
-        AND unixepoch(observed_at) >= unixepoch(?) - 5
-      ORDER BY id DESC LIMIT 1
-    `).get(model, values.totalTokens, values.promptTokens, values.completionTokens, observedAt);
+    if (event.source !== "native" || values.totalTokens > 0) {
+      duplicate ??= this.db.prepare(`
+        SELECT * FROM calls
+        WHERE model = ? AND total_tokens = ? AND prompt_tokens = ? AND completion_tokens = ?
+          AND unixepoch(observed_at) >= unixepoch(?) - 5
+        ORDER BY id DESC LIMIT 1
+      `).get(model, values.totalTokens, values.promptTokens, values.completionTokens, observedAt);
+    }
 
     const estimated = actualCredits === null ? estimateCredits({
       model,

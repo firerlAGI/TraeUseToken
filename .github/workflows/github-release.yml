@@ -13,7 +13,7 @@ on:
       tag:
         description: Release tag
         required: true
-        default: v1.3.4
+        default: v1.4.0
 
 permissions:
   contents: write
@@ -22,7 +22,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag || 'v1.3.4' }}
+      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag || 'v1.4.0' }}
     steps:
       - name: Check out release tag
         uses: actions/checkout@v4
@@ -56,6 +56,6 @@ jobs:
           else
             gh release create "$RELEASE_TAG" "$VSIX_NAME" \
               --title "Trae Use Token $RELEASE_TAG" \
-              --notes "正式版。支持在 TRAE 内本地观测模型 Token、缓存命中与实际/估算积分；提供日、本周、月和全部记录视图，以及内置仪表盘和一键启动监听。若 TRAE 商店暂时未同步，可下载本页 VSIX 后选择‘从 VSIX 安装’。" \
+              --notes "正式版。安装后无需重启即可记录 TRAE 实际积分变化；可选启用详细 Token 监听以采集逐次 Token、缓存和模型明细。若 TRAE 商店暂时未同步，可下载本页 VSIX 后选择‘从 VSIX 安装’。" \
               --latest
           fi

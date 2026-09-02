@@ -8,6 +8,7 @@ const { pathToFileURL } = require("node:url");
 const { relaunchSpec } = require("./relaunch.cjs");
 const { encodeLaunchPayload, requiresDelayedRelaunch } = require("./relaunch-helper.cjs");
 const { databaseMigrationCandidates } = require("./storage.cjs");
+const { NATIVE_CREDITS_COMMAND, createNativeUsageBridge } = require("./native-usage.cjs");
 
 let ownedRuntime;
 let runtimePromise;
@@ -18,6 +19,7 @@ let dashboardSnapshotVersion = 0;
 let output;
 let activeContext;
 let statusBar;
+let nativeBridge;
 const WINDOWS_EXECUTABLE_KEY = "traeUsage.windowsExecutablePath";
 
 function config() {
@@ -26,7 +28,8 @@ function config() {
     servicePort: value.get("servicePort", 4317),
     cdpPort: value.get("cdpPort", 9222),
     autoStart: value.get("autoStart", true),
-    debuggerEnabled: value.get("debuggerEnabled", true)
+    debuggerEnabled: value.get("debuggerEnabled", true),
+    nativeEnabled: value.get("nativeEnabled", true)
   };
 }
 
@@ -52,10 +55,42 @@ async function getJson(url) {
   return JSON.parse(response.body.toString("utf8"));
 }
 
+async function postJson(url, value) {
+  const body = Buffer.from(JSON.stringify(value), "utf8");
+  return new Promise((resolve, reject) => {
+    const target = new URL(url);
+    const req = http.request({
+      hostname: target.hostname,
+      port: target.port,
+      path: `${target.pathname}${target.search}`,
+      method: "POST",
+      timeout: 3000,
+      headers: { "content-type": "application/json", "content-length": body.length }
+    }, (response) => {
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+      response.on("end", () => {
+        const payload = Buffer.concat(chunks).toString("utf8");
+        if ((response.statusCode || 0) < 200 || (response.statusCode || 0) >= 300) {
+          reject(new Error(`HTTP ${response.statusCode}: ${payload}`));
+          return;
+        }
+        resolve(payload ? JSON.parse(payload) : {});
+      });
+    });
+    req.on("timeout", () => req.destroy(new Error("请求超时")));
+    req.on("error", reject);
+    req.end(body);
+  });
+}
+
 async function health() {
   try {
     const value = await getJson(`${serviceUrl()}/api/health`);
-    return value?.ok ? value : null;
+    if (!value?.ok || value.service !== "trae-usage-monitor") return null;
+    if (value.dashboardPort !== undefined && value.dashboardPort !== config().servicePort) return null;
+    if (value.cdpPort !== undefined && value.cdpPort !== config().cdpPort) return null;
+    return value;
   } catch {
     return null;
   }
@@ -128,6 +163,23 @@ async function stopOwnedRuntime() {
   const runtime = ownedRuntime;
   ownedRuntime = undefined;
   if (runtime) await runtime.stop();
+}
+
+async function startNativeBridge(context) {
+  nativeBridge?.dispose();
+  nativeBridge = undefined;
+  if (!config().nativeEnabled) return false;
+  const bridge = createNativeUsageBridge({
+    vscode,
+    onLog: (message) => output?.appendLine(message),
+    async sendSnapshot(value) {
+      await ensureRuntime(context, false);
+      return postJson(`${serviceUrl()}/api/native-snapshot`, value);
+    }
+  });
+  nativeBridge = bridge;
+  context.subscriptions.push(bridge);
+  return bridge.start();
 }
 
 async function snapshot(range = dashboardRange) {
@@ -233,9 +285,12 @@ async function oneClickStart() {
       await openDashboard();
       return;
     }
+    const nativeActive = current.nativeAvailable;
     const action = await vscode.window.showWarningMessage(
-      "需要重启一次 TRAE 才能开启本机用量监听。插件会保存已修改文件、重新打开当前工作区，并自动开始监听。",
-      { modal: true, detail: `只在本机启用 CDP 端口 ${config().cdpPort}，不会执行终端命令或上传数据。` },
+      nativeActive
+        ? "免重启积分监听已经运行。是否重启 TRAE，额外启用逐次 Token、缓存和模型明细？"
+        : "当前 TRAE 不支持免重启积分接口。是否重启 TRAE，启用完整的本机用量监听？",
+      { modal: true, detail: `插件会保存已修改文件并重新打开当前工作区。CDP 只绑定本机端口 ${config().cdpPort}，不会上传数据。` },
       "保存并重启 TRAE"
     );
     if (action !== "保存并重启 TRAE") return;
@@ -298,11 +353,11 @@ button:active:not(:disabled){opacity:.82}button:disabled{cursor:not-allowed;opac
 <nav class="range-bar" aria-label="统计时间范围"><div class="range-tabs" role="tablist"><button class="range-tab" role="tab" data-range="day" aria-selected="true">今日</button><button class="range-tab" role="tab" data-range="week" aria-selected="false">本周</button><button class="range-tab" role="tab" data-range="month" aria-selected="false">本月</button><button class="range-tab" role="tab" data-range="all" aria-selected="false">全部记录</button></div><span id="rangeCaption" class="range-caption">显示今天 00:00 至今</span></nav>
 <section class="cards"><div class="card"><div class="label">调用次数</div><div class="value" id="calls">0</div></div><div class="card"><div class="label">总词元</div><div class="value" id="tokens">0</div></div><div class="card"><div class="label">缓存命中率</div><div class="value" id="cache">0<span class="unit">%</span></div></div><div class="card"><div class="label">积分</div><div class="value" id="credits">0</div></div></section>
 <section class="grid"><div class="panel"><h2>按模型用量</h2><div id="models" class="empty">暂无数据</div></div><div class="panel"><h2>调用记录</h2><div class="table-wrap" tabindex="0" role="region" aria-label="调用记录，可滚动"><table><thead><tr><th>时间</th><th>模型</th><th>输入</th><th>输出</th><th>缓存</th><th>积分</th></tr></thead><tbody id="recent"></tbody></table></div><div class="legend"><span class="actual">● 实际积分</span>　<span class="estimated">● 估算积分</span></div></div></section>
-<div class="toolbar"><div><strong>记录仅保存在本机 SQLite</strong></div><div class="actions"><button id="setup">一键启动监听</button><button class="secondary" id="diagnostics">查看诊断</button><button class="secondary" id="export">导出 CSV</button></div></div>
+<div class="toolbar"><div><strong>记录仅保存在本机 SQLite</strong></div><div class="actions"><button id="setup">启用详细 Token 监听</button><button class="secondary" id="diagnostics">查看诊断</button><button class="secondary" id="export">导出 CSV</button></div></div>
 <div id="notice" class="notice">不保存提示词、回答正文或鉴权信息。估算积分不代表 TRAE 官方账单。</div>
 </main><script nonce="${token}">
 const vscode=acquireVsCodeApi(),fmt=new Intl.NumberFormat('zh-CN'),dateFmt=new Intl.DateTimeFormat('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}),num=v=>fmt.format(Math.round(Number(v)||0)),time=v=>{try{return dateFmt.format(new Date(v))}catch{return'—'}},esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let activeRange='day';const rangeCaptions={day:'显示今天 00:00 至今',week:'显示本周一 00:00 至今',month:'显示本月 1 日 00:00 至今',all:'显示全部历史记录'};function selectRange(range,notify=true){activeRange=['day','week','month','all'].includes(range)?range:'day';document.querySelectorAll('.range-tab').forEach(button=>button.setAttribute('aria-selected',String(button.dataset.range===activeRange)));document.querySelector('#rangeCaption').textContent=rangeCaptions[activeRange];if(notify){document.querySelector('main').setAttribute('aria-busy','true');document.querySelector('#rangeCaption').dataset.loading='true';vscode.postMessage({type:'range',value:activeRange})}}
-function render(data){const h=data.health||{},s=data.summary||{total:{},models:[]},rows=data.calls||[],t=s.total||{};document.querySelector('#calls').textContent=num(t.calls);document.querySelector('#tokens').textContent=num(t.total_tokens);const rate=t.prompt_tokens?100*t.cached_tokens/t.prompt_tokens:0;document.querySelector('#cache').innerHTML=rate.toFixed(1)+'<span class="unit">%</span>';const actual=Number(t.actual_credits)||0,estimated=Number(t.estimated_credits)||0;document.querySelector('#credits').innerHTML=(actual+estimated).toFixed(2)+' <span class="unit">'+(actual&&estimated?'混合':actual?'实际':'估算')+'</span>';const models=s.models||[],max=Math.max(1,...models.map(x=>x.total_tokens));document.querySelector('#models').className='';document.querySelector('#models').innerHTML=models.length?models.map(m=>'<div class="model"><div class="model-name" title="'+esc(m.model)+'">'+esc(m.model)+'</div><div class="track"><div class="bar" style="width:'+100*m.total_tokens/max+'%"></div></div><div class="model-total">'+num(m.total_tokens)+'</div></div>').join(''):'<div class="empty">暂无数据</div>';document.querySelector('#recent').innerHTML=rows.map(c=>'<tr><td>'+time(c.observed_at)+'</td><td class="model-cell">'+esc(c.model)+'</td><td>'+num(c.prompt_tokens)+'</td><td>'+num(c.completion_tokens)+'</td><td>'+num(c.cached_tokens)+'</td><td class="'+esc(c.credit_kind)+'">'+(c.credits==null?'—':Number(c.credits).toFixed(3))+'</td></tr>').join('');const ready=h.cdpConnected&&(h.breakpointCount>0||h.lastUsageAt),setup=document.querySelector('#setup');setup.disabled=Boolean(h.cdpConnected);setup.textContent=h.cdpConnected?'监听已启动':'一键启动监听';document.querySelector('#dot').classList.toggle('on',ready);document.querySelector('#status').textContent=!h.cdpConnected?'等待一键启动':ready?(h.breakpointCount>0?'已就绪 · '+h.breakpointCount+' 个采集点':'已就绪 · 已捕获用量'):'已连接，正在定位采集点';document.querySelector('#notice').className='notice';document.querySelector('#notice').textContent=h.lastError?'CDP：'+h.lastError:'不保存提示词、回答正文或鉴权信息。估算积分不代表 TRAE 官方账单。'}
+function render(data){const h=data.health||{},s=data.summary||{total:{},models:[]},rows=data.calls||[],t=s.total||{};document.querySelector('#calls').textContent=num(t.calls);document.querySelector('#tokens').textContent=num(t.total_tokens);const rate=t.prompt_tokens?100*t.cached_tokens/t.prompt_tokens:0;document.querySelector('#cache').innerHTML=rate.toFixed(1)+'<span class="unit">%</span>';const actual=Number(t.actual_credits)||0,estimated=Number(t.estimated_credits)||0;document.querySelector('#credits').innerHTML=(actual+estimated).toFixed(2)+' <span class="unit">'+(actual&&estimated?'混合':actual?'实际':'估算')+'</span>';const models=s.models||[],max=Math.max(1,...models.map(x=>x.total_tokens));document.querySelector('#models').className='';document.querySelector('#models').innerHTML=models.length?models.map(m=>'<div class="model"><div class="model-name" title="'+esc(m.model)+'">'+esc(m.model)+'</div><div class="track"><div class="bar" style="width:'+100*m.total_tokens/max+'%"></div></div><div class="model-total">'+num(m.total_tokens)+'</div></div>').join(''):'<div class="empty">暂无数据</div>';document.querySelector('#recent').innerHTML=rows.map(c=>'<tr><td>'+time(c.observed_at)+'</td><td class="model-cell">'+esc(c.model)+'</td><td>'+num(c.prompt_tokens)+'</td><td>'+num(c.completion_tokens)+'</td><td>'+num(c.cached_tokens)+'</td><td class="'+esc(c.credit_kind)+'">'+(c.credits==null?'—':Number(c.credits).toFixed(3))+'</td></tr>').join('');const detailed=h.cdpConnected,ready=detailed||h.nativeAvailable,setup=document.querySelector('#setup');setup.disabled=Boolean(detailed);setup.textContent=detailed?'详细监听已启动':'启用详细 Token 监听';document.querySelector('#dot').classList.toggle('on',ready);document.querySelector('#status').textContent=detailed?(h.breakpointCount>0?'详细监听已就绪 · '+h.breakpointCount+' 个采集点':'已连接，正在定位采集点'):h.nativeAvailable?'免重启积分监听已就绪':'当前 TRAE 暂不支持免重启监听';document.querySelector('#notice').className='notice';document.querySelector('#notice').textContent=detailed?(h.lastError?'CDP：'+h.lastError:'详细模式记录 Token、缓存、模型和积分。'):h.nativeAvailable?'免重启模式记录实际积分变化；逐次 Token、缓存和模型明细需要可选的详细监听。':'未检测到可用监听接口。'}
 window.addEventListener('message',e=>{if(e.data.type==='snapshot'){if(e.data.value?.summary?.range)selectRange(e.data.value.summary.range,false);render(e.data.value);document.querySelector('main').setAttribute('aria-busy','false');document.querySelector('#rangeCaption').dataset.loading='false'}if(e.data.type==='error'){document.querySelector('main').setAttribute('aria-busy','false');document.querySelector('#rangeCaption').dataset.loading='false';document.querySelector('#notice').className='notice error';document.querySelector('#notice').textContent=e.data.message}});document.querySelectorAll('.range-tab').forEach(button=>button.onclick=()=>selectRange(button.dataset.range));document.querySelector('#export').onclick=()=>vscode.postMessage({type:'export',range:activeRange});document.querySelector('#setup').onclick=()=>vscode.postMessage({type:'start'});document.querySelector('#diagnostics').onclick=()=>vscode.postMessage({type:'diagnostics'});selectRange('day',false);document.querySelector('#rangeCaption').dataset.loading='true';vscode.postMessage({type:'ready',range:activeRange});
 </script></body></html>`;
 }
@@ -364,9 +419,35 @@ async function showDiagnostics() {
   output.appendLine(`CDP port: ${config().cdpPort}`);
   output.appendLine(`Service port: ${config().servicePort}`);
   output.appendLine(`Database: ${databasePath(activeContext)}`);
+  const allCommands = await vscode.commands.getCommands(true);
+  output.appendLine(`Native task event: ${typeof vscode.icubeAI?.onAiTaskComplete === "function"}`);
+  output.appendLine(`Native credits command: ${allCommands.includes(NATIVE_CREDITS_COMMAND)}`);
+  if (allCommands.includes(NATIVE_CREDITS_COMMAND)) {
+    try {
+      const nativeCredits = await vscode.commands.executeCommand(NATIVE_CREDITS_COMMAND);
+      const numericFields = [];
+      const visit = (value, path = [], depth = 0) => {
+        if (!value || typeof value !== "object" || depth > 5) return;
+        for (const [key, child] of Object.entries(value)) {
+          const nextPath = [...path, key];
+          if (typeof child === "number" || typeof child === "boolean" || child === null) {
+            numericFields.push(`${nextPath.join(".")}=${child}`);
+          } else if (child && typeof child === "object") {
+            visit(child, nextPath, depth + 1);
+          }
+        }
+      };
+      visit(nativeCredits);
+      output.appendLine(`Native credits fields: ${numericFields.join(", ") || "none"}`);
+    } catch (error) {
+      output.appendLine(`Native credits error: ${error.message}`);
+    }
+  }
   try {
     const value = await snapshot();
     output.appendLine(`Connected: ${Boolean(value.health.cdpConnected)}`);
+    output.appendLine(`Mode: ${value.health.mode || "waiting"}`);
+    output.appendLine(`Native available: ${Boolean(value.health.nativeAvailable)}`);
     output.appendLine(`CDP targets: ${value.health.cdpTargets || 0}`);
     output.appendLine(`Breakpoints: ${value.health.breakpointCount || 0}`);
     output.appendLine(`Last usage: ${value.health.lastUsageAt || "none"}`);
@@ -391,7 +472,7 @@ async function updateStatus() {
     statusBar.tooltip = "监控运行时未启动；点击一键启动";
     statusBar.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
   } else {
-    statusBar.command = current.cdpConnected ? "traeUsage.openDashboard" : "traeUsage.startMonitor";
+    statusBar.command = current.cdpConnected || current.nativeAvailable ? "traeUsage.openDashboard" : "traeUsage.startMonitor";
     try {
       const summary = await getJson(`${serviceUrl()}/api/summary`);
       const total = summary.total || {};
@@ -402,8 +483,11 @@ async function updateStatus() {
     }
     statusBar.tooltip = current.cdpConnected
       ? `已连接 TRAE（${current.cdpTargets || 0} 个 CDP 目标，${current.breakpointCount || 0} 个采集点）`
-      : `等待 TRAE CDP ${config().cdpPort}；点击一键启动`;
-    statusBar.backgroundColor = current.cdpConnected ? undefined : new vscode.ThemeColor("statusBarItem.warningBackground");
+      : current.nativeAvailable
+        ? "免重启积分监听已启动；点击查看仪表盘"
+        : "当前 TRAE 未提供免重启接口；点击启用详细监听";
+    statusBar.backgroundColor = current.cdpConnected || current.nativeAvailable
+      ? undefined : new vscode.ThemeColor("statusBarItem.warningBackground");
   }
   statusBar.show();
   if (dashboardPanel) await postSnapshot();
@@ -430,6 +514,7 @@ async function activate(context) {
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(async (event) => {
     if (!event.affectsConfiguration("traeUsage")) return;
     await stopOwnedRuntime();
+    await startNativeBridge(context);
     await updateStatus();
   }));
 
@@ -438,12 +523,14 @@ async function activate(context) {
       output.appendLine(`[runtime] 激活时启动失败：${error.stack || error.message}`);
     }
   }
+  await startNativeBridge(context);
   await updateStatus();
   statusTimer = setInterval(() => void updateStatus(), 3000);
 }
 
 async function deactivate() {
   clearInterval(statusTimer);
+  nativeBridge?.dispose();
   await stopOwnedRuntime();
 }
 

@@ -12,13 +12,14 @@ Trae Use Token 是一个非官方、本地优先的 TRAE CN 扩展，用于观�
 - 区分 TRAE 返回的实际积分与本地实验估算积分；
 - 捕获 `get_session_usage` 的 `credits_float` 实际账单值；
 - TRAE 内置仪表盘、状态栏摘要和 CSV 导出；
-- 插件内一键保存并重启 TRAE，无需使用终端开启 CDP；
+- 安装后自动启用免重启积分监听，直接记录 TRAE 实际积分变化；
+- 可选启用详细 Token 监听，记录逐次 Token、缓存和模型明细；
 - 多窗口单实例协调、启动诊断和旧版数据库自动迁移；
 - SQLite 本地持久化，不保存提示词和回答正文。
 
 ## 兼容性
 
-- 已验证：macOS、TRAE CN 3.3.83（编辑器内核 1.107.1）；
+- 已验证：macOS、TRAE CN 3.3.95（编辑器内核 1.107.1）；
 - 扩展要求兼容 VS Code 1.107 API 的 TRAE 版本；
 - Windows/Linux 启动命令已提供，但尚未完成同等强度的实机验证。
 
@@ -29,31 +30,34 @@ Trae Use Token 是一个非官方、本地优先的 TRAE CN 扩展，用于观�
 可在扩展面板搜索 `Trae Use Token` 或 `@id:firerl.trae-use-token` 并点击“安装”。
 
 如果 TRAE 商店暂时搜索不到或尚未同步最新版，可从
-[GitHub Release 下载 VSIX](https://github.com/firerlAGI/TraeUseToken/releases/download/v1.3.4/trae-use-token-1.3.4.vsix)，
+[GitHub Release 下载 VSIX](https://github.com/firerlAGI/TraeUseToken/releases/download/v1.4.0/trae-use-token-1.4.0.vsix)，
 再从 TRAE 扩展面板右上角菜单选择“从 VSIX 安装”。安装完成后打开内置仪表盘，
-点击“一键启动监听”。
+原生积分监听会自动开始，不需要重启 TRAE。
 
 ## 首次启动
 
-TRAE 必须在进程启动时开启本机 CDP 端口。首次使用时点击状态栏的 `Trae Use Token`，
-再点击“一键启动监听”。插件会在确认后保存已修改文件、带本机 CDP 端口重启 TRAE，
-并重新打开当前工作区。用户不需要打开终端。
+安装后，扩展会订阅 TRAE 内置的任务完成事件，并读取 TRAE 自己提供的账户积分汇总。
+它只保存每次任务后增加的实际积分，不读取或保存提示词、回答正文和账号令牌，也不需要重启。
+由于 TRAE 的积分可能延迟结算，扩展还会每 30 秒自动对账；记录有时会比回答完成稍晚出现。
 
-macOS 与 Windows 都会等待当前 TRAE 完全退出并释放单实例锁，再自动启动带 CDP 参数的新实例。
+免重启接口不提供逐次 Token、缓存和模型明细。如果需要这些详细数据，可在仪表盘点击
+“启用详细 Token 监听”。扩展会在确认后保存已修改文件、等待 TRAE 完全退出，再以仅绑定
+本机的 CDP 端口重新打开当前工作区。这个增强步骤是可选的。
 
-如果系统未找到 TRAE 安装位置，仍可用命令面板中的 `Trae Use Token: 复制 CDP 启动命令` 作为备用方式。
+如果系统未找到 TRAE 安装位置，可用命令面板中的 `Trae Use Token: 复制 CDP 启动命令` 作为备用方式。
 Windows 自定义安装盘符或目录会自动从 TRAE 的应用根目录识别；若仍无法识别，选择一次安装目录中的
 `Trae CN.exe` 即可，扩展会记住该路径。Windows 上点击确认后，隐藏的重启助手会等待当前 TRAE
 完全退出并释放单实例锁，再自动启动带 CDP 参数的新实例；无需再次手动启动 TRAE。
 
-> 扩展无法在 TRAE 已启动后动态打开 Electron 调试端口。CDP 只能绑定在本机使用，
+> 扩展无法在 TRAE 已启动后动态打开 Electron 调试端口。详细模式的 CDP 只能绑定在本机使用，
 > 不要将 9222 端口转发或暴露到局域网/公网。
 
 ## 使用
 
-安装并按上述方式重启 TRAE 后：
+安装后：
 
-- 未连接时点击状态栏的 `Trae Use Token` 进入一键启动；已连接时点击可打开内置仪表盘；
+- 点击状态栏的 `Trae Use Token` 打开内置仪表盘；
+- 需要逐次 Token 明细时，在仪表盘选择“启用详细 Token 监听”；
 - 或运行 `Trae Use Token: 打开内置仪表盘`；
 - 或打开深链接 `trae-cn://firerl.trae-use-token/dashboard`；
 - 若状态一直异常，运行 `Trae Use Token: 显示诊断信息`；
@@ -61,9 +65,9 @@ Windows 自定义安装盘符或目录会自动从 TRAE 的应用根目录识别
 
 状态含义：
 
-- `等待 TRAE CDP`：TRAE 没有用调试端口启动，或端口配置不一致；
-- `正在定位采集点`：已连接 CDP，正在加载 TRAE 的模型调用脚本；
-- `已就绪`：采集点已挂载，或已经收到用量记录。
+- `免重启积分监听已就绪`：记录任务后的实际积分变化，不提供逐次 Token 明细；
+- `已连接，正在定位采集点`：详细模式已连接 CDP，正在加载 TRAE 的模型调用脚本；
+- `详细监听已就绪`：已能记录 Token、缓存、模型和积分明细。
 
 ## 实际积分与估算积分
 
@@ -89,7 +93,7 @@ POST /api/v1/commercial/get_session_usage
 ## 命令
 
 - `Trae Use Token: 打开内置仪表盘`
-- `Trae Use Token: 一键启动监听`
+- `Trae Use Token: 启用详细 Token 监听（需重启）`
 - `Trae Use Token: 导出 CSV`
 - `Trae Use Token: 复制 CDP 启动命令`
 - `Trae Use Token: 显示诊断信息`
@@ -99,6 +103,7 @@ POST /api/v1/commercial/get_session_usage
 - `traeUsage.cdpPort`：TRAE CDP 端口，默认 `9222`；
 - `traeUsage.servicePort`：本机单实例协调端口，默认 `4317`；
 - `traeUsage.autoStart`：自动启动监听运行时；
+- `traeUsage.nativeEnabled`：启用免重启原生积分监听，默认开启；
 - `traeUsage.debuggerEnabled`：启用 Token 调试断点兜底。
 
 ## 从源码开发

@@ -25,7 +25,19 @@ function json(response, data, status = 200) {
   response.end(JSON.stringify(data));
 }
 
-export function createDashboardServer({ store, host = "127.0.0.1", port = 4317, getStatus = () => ({}) }) {
+async function readJson(request, limit = 64 * 1024) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > limit) throw new Error("request body too large");
+    chunks.push(chunk);
+  }
+  return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+}
+
+export function createDashboardServer({ store, host = "127.0.0.1", port = 4317,
+  getStatus = () => ({}), onNativeSnapshot = async () => ({ recorded: false }) }) {
   const clients = new Set();
   const onCall = (call) => {
     const message = `event: call\ndata: ${JSON.stringify(call)}\n\n`;
@@ -39,6 +51,14 @@ export function createDashboardServer({ store, host = "127.0.0.1", port = 4317, 
       ? url.searchParams.get("range") : "all";
     const since = rangeStart(range);
     if (url.pathname === "/api/health") return json(response, { ok: true, ...getStatus() });
+    if (url.pathname === "/api/native-snapshot") {
+      if (request.method !== "POST") return json(response, { ok: false, error: "method not allowed" }, 405);
+      void readJson(request)
+        .then(onNativeSnapshot)
+        .then((result) => json(response, { ok: true, ...result }))
+        .catch((error) => json(response, { ok: false, error: error.message }, 400));
+      return;
+    }
     if (url.pathname === "/api/summary") return json(response, { ...store.summary(since), range, since });
     if (url.pathname === "/api/calls") {
       const rows = store.recent(Number(url.searchParams.get("limit") || 100), since).map((row) => ({
