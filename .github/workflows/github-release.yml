@@ -9,7 +9,7 @@ on:
       tag:
         description: Release tag
         required: true
-        default: v1.4.0
+        default: v1.4.1
 
 permissions:
   contents: write
@@ -18,7 +18,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag || 'v1.4.0' }}
+      RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag || 'v1.4.1' }}
     steps:
       - name: Check out release tag
         uses: actions/checkout@v4
@@ -52,6 +52,6 @@ jobs:
           else
             gh release create "$RELEASE_TAG" "$VSIX_NAME" \
               --title "Trae Use Token $RELEASE_TAG" \
-              --notes "正式版。安装后无需重启即可记录 TRAE 实际积分变化；可选启用详细 Token 监听以采集逐次 Token、缓存和模型明细。若 TRAE 商店暂时未同步，可下载本页 VSIX 后选择‘从 VSIX 安装’。" \
+              --notes "修复 Coding Plan 等不扣 TRAE 积分的任务无法计入调用次数的问题。安装后无需重启即可记录调用次数和任务事件中的可用明细；Coding Plan 积分显示为不适用。若 TRAE 商店暂时未同步，可下载本页 VSIX 后选择‘从 VSIX 安装’。" \
               --latest
           fi

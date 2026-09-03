@@ -172,6 +172,10 @@ async function startNativeBridge(context) {
   const bridge = createNativeUsageBridge({
     vscode,
     onLog: (message) => output?.appendLine(message),
+    async sendTask(value) {
+      await ensureRuntime(context, false);
+      return postJson(`${serviceUrl()}/api/native-task`, value);
+    },
     async sendSnapshot(value) {
       await ensureRuntime(context, false);
       return postJson(`${serviceUrl()}/api/native-snapshot`, value);
@@ -288,8 +292,8 @@ async function oneClickStart() {
     const nativeActive = current.nativeAvailable;
     const action = await vscode.window.showWarningMessage(
       nativeActive
-        ? "免重启积分监听已经运行。是否重启 TRAE，额外启用逐次 Token、缓存和模型明细？"
-        : "当前 TRAE 不支持免重启积分接口。是否重启 TRAE，启用完整的本机用量监听？",
+        ? "免重启调用监听已经运行。是否重启 TRAE，额外启用逐次 Token、缓存和模型明细？"
+        : "当前 TRAE 不支持免重启任务接口。是否重启 TRAE，启用完整的本机用量监听？",
       { modal: true, detail: `插件会保存已修改文件并重新打开当前工作区。CDP 只绑定本机端口 ${config().cdpPort}，不会上传数据。` },
       "保存并重启 TRAE"
     );
@@ -357,7 +361,7 @@ button:active:not(:disabled){opacity:.82}button:disabled{cursor:not-allowed;opac
 <div id="notice" class="notice">不保存提示词、回答正文或鉴权信息。估算积分不代表 TRAE 官方账单。</div>
 </main><script nonce="${token}">
 const vscode=acquireVsCodeApi(),fmt=new Intl.NumberFormat('zh-CN'),dateFmt=new Intl.DateTimeFormat('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}),num=v=>fmt.format(Math.round(Number(v)||0)),time=v=>{try{return dateFmt.format(new Date(v))}catch{return'—'}},esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));let activeRange='day';const rangeCaptions={day:'显示今天 00:00 至今',week:'显示本周一 00:00 至今',month:'显示本月 1 日 00:00 至今',all:'显示全部历史记录'};function selectRange(range,notify=true){activeRange=['day','week','month','all'].includes(range)?range:'day';document.querySelectorAll('.range-tab').forEach(button=>button.setAttribute('aria-selected',String(button.dataset.range===activeRange)));document.querySelector('#rangeCaption').textContent=rangeCaptions[activeRange];if(notify){document.querySelector('main').setAttribute('aria-busy','true');document.querySelector('#rangeCaption').dataset.loading='true';vscode.postMessage({type:'range',value:activeRange})}}
-function render(data){const h=data.health||{},s=data.summary||{total:{},models:[]},rows=data.calls||[],t=s.total||{};document.querySelector('#calls').textContent=num(t.calls);document.querySelector('#tokens').textContent=num(t.total_tokens);const rate=t.prompt_tokens?100*t.cached_tokens/t.prompt_tokens:0;document.querySelector('#cache').innerHTML=rate.toFixed(1)+'<span class="unit">%</span>';const actual=Number(t.actual_credits)||0,estimated=Number(t.estimated_credits)||0;document.querySelector('#credits').innerHTML=(actual+estimated).toFixed(2)+' <span class="unit">'+(actual&&estimated?'混合':actual?'实际':'估算')+'</span>';const models=s.models||[],max=Math.max(1,...models.map(x=>x.total_tokens));document.querySelector('#models').className='';document.querySelector('#models').innerHTML=models.length?models.map(m=>'<div class="model"><div class="model-name" title="'+esc(m.model)+'">'+esc(m.model)+'</div><div class="track"><div class="bar" style="width:'+100*m.total_tokens/max+'%"></div></div><div class="model-total">'+num(m.total_tokens)+'</div></div>').join(''):'<div class="empty">暂无数据</div>';document.querySelector('#recent').innerHTML=rows.map(c=>'<tr><td>'+time(c.observed_at)+'</td><td class="model-cell">'+esc(c.model)+'</td><td>'+num(c.prompt_tokens)+'</td><td>'+num(c.completion_tokens)+'</td><td>'+num(c.cached_tokens)+'</td><td class="'+esc(c.credit_kind)+'">'+(c.credits==null?'—':Number(c.credits).toFixed(3))+'</td></tr>').join('');const detailed=h.cdpConnected,ready=detailed||h.nativeAvailable,setup=document.querySelector('#setup');setup.disabled=Boolean(detailed);setup.textContent=detailed?'详细监听已启动':'启用详细 Token 监听';document.querySelector('#dot').classList.toggle('on',ready);document.querySelector('#status').textContent=detailed?(h.breakpointCount>0?'详细监听已就绪 · '+h.breakpointCount+' 个采集点':'已连接，正在定位采集点'):h.nativeAvailable?'免重启积分监听已就绪':'当前 TRAE 暂不支持免重启监听';document.querySelector('#notice').className='notice';document.querySelector('#notice').textContent=detailed?(h.lastError?'CDP：'+h.lastError:'详细模式记录 Token、缓存、模型和积分。'):h.nativeAvailable?'免重启模式记录实际积分变化；逐次 Token、缓存和模型明细需要可选的详细监听。':'未检测到可用监听接口。'}
+function render(data){const h=data.health||{},s=data.summary||{total:{},models:[]},rows=data.calls||[],t=s.total||{};document.querySelector('#calls').textContent=num(t.calls);document.querySelector('#tokens').textContent=num(t.total_tokens);const rate=t.prompt_tokens?100*t.cached_tokens/t.prompt_tokens:0;document.querySelector('#cache').innerHTML=rate.toFixed(1)+'<span class="unit">%</span>';const actual=Number(t.actual_credits)||0,estimated=Number(t.estimated_credits)||0,hasCredits=actual||estimated;document.querySelector('#credits').innerHTML=hasCredits?(actual+estimated).toFixed(2)+' <span class="unit">'+(actual&&estimated?'混合':actual?'实际':'估算')+'</span>':t.calls?'— <span class="unit">不适用</span>':'0.00 <span class="unit">—</span>';const models=s.models||[],max=Math.max(1,...models.map(x=>x.total_tokens));document.querySelector('#models').className='';document.querySelector('#models').innerHTML=models.length?models.map(m=>'<div class="model"><div class="model-name" title="'+esc(m.model)+'">'+esc(m.model)+'</div><div class="track"><div class="bar" style="width:'+100*m.total_tokens/max+'%"></div></div><div class="model-total">'+num(m.total_tokens)+'</div></div>').join(''):'<div class="empty">暂无数据</div>';document.querySelector('#recent').innerHTML=rows.map(c=>'<tr><td>'+time(c.observed_at)+'</td><td class="model-cell">'+esc(c.model)+'</td><td>'+num(c.prompt_tokens)+'</td><td>'+num(c.completion_tokens)+'</td><td>'+num(c.cached_tokens)+'</td><td class="'+esc(c.credit_kind)+'">'+(c.credits==null?'—':Number(c.credits).toFixed(3))+'</td></tr>').join('');const detailed=h.cdpConnected,ready=detailed||h.nativeAvailable,setup=document.querySelector('#setup');setup.disabled=Boolean(detailed);setup.textContent=detailed?'详细监听已启动':'启用详细 Token 监听';document.querySelector('#dot').classList.toggle('on',ready);document.querySelector('#status').textContent=detailed?(h.breakpointCount>0?'详细监听已就绪 · '+h.breakpointCount+' 个采集点':'已连接，正在定位采集点'):h.nativeAvailable?'免重启调用监听已就绪':'当前 TRAE 暂不支持免重启监听';document.querySelector('#notice').className='notice';document.querySelector('#notice').textContent=detailed?(h.lastError?'CDP：'+h.lastError:'详细模式记录 Token、缓存和模型；有 TRAE 积分时也会一并记录。'):h.nativeAvailable?'免重启模式记录调用次数和可用明细；Coding Plan 的积分显示为不适用。':'未检测到可用监听接口。'}
 window.addEventListener('message',e=>{if(e.data.type==='snapshot'){if(e.data.value?.summary?.range)selectRange(e.data.value.summary.range,false);render(e.data.value);document.querySelector('main').setAttribute('aria-busy','false');document.querySelector('#rangeCaption').dataset.loading='false'}if(e.data.type==='error'){document.querySelector('main').setAttribute('aria-busy','false');document.querySelector('#rangeCaption').dataset.loading='false';document.querySelector('#notice').className='notice error';document.querySelector('#notice').textContent=e.data.message}});document.querySelectorAll('.range-tab').forEach(button=>button.onclick=()=>selectRange(button.dataset.range));document.querySelector('#export').onclick=()=>vscode.postMessage({type:'export',range:activeRange});document.querySelector('#setup').onclick=()=>vscode.postMessage({type:'start'});document.querySelector('#diagnostics').onclick=()=>vscode.postMessage({type:'diagnostics'});selectRange('day',false);document.querySelector('#rangeCaption').dataset.loading='true';vscode.postMessage({type:'ready',range:activeRange});
 </script></body></html>`;
 }
@@ -477,14 +481,18 @@ async function updateStatus() {
       const summary = await getJson(`${serviceUrl()}/api/summary`);
       const total = summary.total || {};
       const credits = Number(total.actual_credits || 0) + Number(total.estimated_credits || 0);
-      statusBar.text = `$(pulse) ${Number(total.total_tokens || 0).toLocaleString()} · ${credits.toFixed(2)}`;
+      const calls = Number(total.calls || 0);
+      const tokens = Number(total.total_tokens || 0).toLocaleString();
+      statusBar.text = credits > 0
+        ? `$(pulse) ${calls} 次 · ${tokens} Token · ${credits.toFixed(2)}`
+        : `$(pulse) ${calls} 次 · ${tokens} Token`;
     } catch {
       statusBar.text = "$(pulse) Trae Use Token";
     }
     statusBar.tooltip = current.cdpConnected
       ? `已连接 TRAE（${current.cdpTargets || 0} 个 CDP 目标，${current.breakpointCount || 0} 个采集点）`
       : current.nativeAvailable
-        ? "免重启积分监听已启动；点击查看仪表盘"
+        ? "免重启调用监听已启动；点击查看仪表盘"
         : "当前 TRAE 未提供免重启接口；点击启用详细监听";
     statusBar.backgroundColor = current.cdpConnected || current.nativeAvailable
       ? undefined : new vscode.ThemeColor("statusBarItem.warningBackground");

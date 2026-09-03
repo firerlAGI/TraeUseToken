@@ -22,4 +22,9 @@ for (const [name, source] of [["public dashboard", publicDashboard], ["TRAE webv
     assert.match(source, /aria-label="调用记录，可滚动"/u);
     assert.match(source, /tabindex="0"/u);
   });
+
+  test(`${name} presents credit-free Coding Plan calls as not applicable`, () => {
+    assert.match(source, /不适用/u);
+    assert.match(source, /免重启调用监听已就绪/u);
+  });
 }

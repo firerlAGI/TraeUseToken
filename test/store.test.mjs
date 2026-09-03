@@ -41,6 +41,23 @@ test("late TRAE billing replaces the matching estimate", () => {
   store.close();
 });
 
+test("merges detailed token data into a credit-free native task", () => {
+  const directory = mkdtempSync(join(tmpdir(), "trae-monitor-coding-plan-test-"));
+  const store = new UsageStore(join(directory, "usage.db"));
+  store.record({ model: "TRAE 原生任务", source: "native-task", userMessageId: "turn-plan-1",
+    skipCreditEstimate: true });
+  const merged = store.record({ model: "Coding Plan Model", promptTokens: 200,
+    completionTokens: 10, totalTokens: 210, cachedTokens: 150, source: "debugger",
+    userMessageId: "turn-plan-1" });
+  assert.equal(store.summary().total.calls, 1);
+  assert.equal(merged.model, "Coding Plan Model");
+  assert.equal(merged.total_tokens, 210);
+  assert.equal(merged.cached_tokens, 150);
+  assert.equal(merged.credits, null);
+  assert.equal(merged.credit_kind, "not_applicable");
+  store.close();
+});
+
 test("filters summaries, recent calls and CSV by start time", () => {
   const directory = mkdtempSync(join(tmpdir(), "trae-monitor-range-test-"));
   const store = new UsageStore(join(directory, "usage.db"));

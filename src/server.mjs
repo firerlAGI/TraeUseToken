@@ -37,7 +37,8 @@ async function readJson(request, limit = 64 * 1024) {
 }
 
 export function createDashboardServer({ store, host = "127.0.0.1", port = 4317,
-  getStatus = () => ({}), onNativeSnapshot = async () => ({ recorded: false }) }) {
+  getStatus = () => ({}), onNativeSnapshot = async () => ({ recorded: false }),
+  onNativeTask = async () => ({ recorded: false }) }) {
   const clients = new Set();
   const onCall = (call) => {
     const message = `event: call\ndata: ${JSON.stringify(call)}\n\n`;
@@ -55,6 +56,14 @@ export function createDashboardServer({ store, host = "127.0.0.1", port = 4317,
       if (request.method !== "POST") return json(response, { ok: false, error: "method not allowed" }, 405);
       void readJson(request)
         .then(onNativeSnapshot)
+        .then((result) => json(response, { ok: true, ...result }))
+        .catch((error) => json(response, { ok: false, error: error.message }, 400));
+      return;
+    }
+    if (url.pathname === "/api/native-task") {
+      if (request.method !== "POST") return json(response, { ok: false, error: "method not allowed" }, 405);
+      void readJson(request)
+        .then(onNativeTask)
         .then((result) => json(response, { ok: true, ...result }))
         .catch((error) => json(response, { ok: false, error: error.message }, 400));
       return;

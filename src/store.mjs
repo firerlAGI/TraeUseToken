@@ -92,24 +92,36 @@ export class UsageStore extends EventEmitter {
       `).get(model, values.totalTokens, values.promptTokens, values.completionTokens, observedAt);
     }
 
-    const estimated = actualCredits === null ? estimateCredits({
+    const estimated = actualCredits === null && !event.skipCreditEstimate ? estimateCredits({
       model,
       promptTokens: values.promptTokens,
       cachedTokens: values.cachedTokens
     }) : null;
     const credits = actualCredits ?? estimated;
-    const creditKind = actualCredits !== null ? "actual" : estimated !== null ? "estimated" : "unknown";
+    const creditKind = actualCredits !== null ? "actual"
+      : event.skipCreditEstimate ? "not_applicable"
+        : estimated !== null ? "estimated" : "unknown";
 
     if (duplicate) {
-      const mergedKind = duplicate.credit_kind === "actual" ? "actual" : creditKind;
-      const mergedCredits = duplicate.credit_kind === "actual" ? duplicate.credits : credits;
+      const mergedKind = duplicate.credit_kind === "actual" ? "actual"
+        : creditKind === "actual" ? "actual"
+          : duplicate.credit_kind === "not_applicable" ? "not_applicable" : creditKind;
+      const mergedCredits = duplicate.credit_kind === "actual" ? duplicate.credits
+        : creditKind === "actual" ? credits
+          : duplicate.credit_kind === "not_applicable" ? null : credits;
+      const placeholderModels = new Set(["unknown", "TRAE 原生任务", "TRAE 原生积分"]);
+      const mergedModel = placeholderModels.has(duplicate.model) && !placeholderModels.has(model)
+        ? model : duplicate.model;
       this.db.prepare(`
-        UPDATE calls SET source = ?, credits = ?, credit_kind = ?, cached_tokens = MAX(cached_tokens, ?),
-          cache_write_tokens = MAX(cache_write_tokens, ?), session_id = COALESCE(session_id, ?),
+        UPDATE calls SET source = ?, model = ?, prompt_tokens = MAX(prompt_tokens, ?),
+          completion_tokens = MAX(completion_tokens, ?), total_tokens = MAX(total_tokens, ?),
+          credits = ?, credit_kind = ?, cached_tokens = MAX(cached_tokens, ?),
+          cache_write_tokens = MAX(cache_write_tokens, ?), multiplier = ?, session_id = COALESCE(session_id, ?),
           user_message_id = COALESCE(user_message_id, ?), agent_message_id = COALESCE(agent_message_id, ?),
           billing_id = COALESCE(billing_id, ?), raw_json = COALESCE(raw_json, ?) WHERE id = ?
       `).run([...new Set(`${duplicate.source},${event.source || "unknown"}`.split(","))].join(","),
-        mergedCredits, mergedKind, values.cachedTokens, values.cacheWriteTokens, sessionId,
+        mergedModel, values.promptTokens, values.completionTokens, values.totalTokens,
+        mergedCredits, mergedKind, values.cachedTokens, values.cacheWriteTokens, modelMultiplier(mergedModel), sessionId,
         userMessageId, agentMessageId, billingId, null, duplicate.id);
       const row = this.getById(duplicate.id);
       this.emit("call", row);

@@ -12,7 +12,7 @@ Trae Use Token 是一个非官方、本地优先的 TRAE CN 扩展，用于观�
 - 区分 TRAE 返回的实际积分与本地实验估算积分；
 - 捕获 `get_session_usage` 的 `credits_float` 实际账单值；
 - TRAE 内置仪表盘、状态栏摘要和 CSV 导出；
-- 安装后自动启用免重启积分监听，直接记录 TRAE 实际积分变化；
+- 安装后自动启用免重启调用监听，Coding Plan 等不扣 TRAE 积分的任务也会计数；
 - 可选启用详细 Token 监听，记录逐次 Token、缓存和模型明细；
 - 多窗口单实例协调、启动诊断和旧版数据库自动迁移；
 - SQLite 本地持久化，不保存提示词和回答正文。
@@ -30,17 +30,18 @@ Trae Use Token 是一个非官方、本地优先的 TRAE CN 扩展，用于观�
 可在扩展面板搜索 `Trae Use Token` 或 `@id:firerl.trae-use-token` 并点击“安装”。
 
 如果 TRAE 商店暂时搜索不到或尚未同步最新版，可从
-[GitHub Release 下载 VSIX](https://github.com/firerlAGI/TraeUseToken/releases/download/v1.4.0/trae-use-token-1.4.0.vsix)，
+[GitHub Release 下载 VSIX](https://github.com/firerlAGI/TraeUseToken/releases/download/v1.4.1/trae-use-token-1.4.1.vsix)，
 再从 TRAE 扩展面板右上角菜单选择“从 VSIX 安装”。安装完成后打开内置仪表盘，
-原生积分监听会自动开始，不需要重启 TRAE。
+原生调用监听会自动开始，不需要重启 TRAE。
 
 ## 首次启动
 
-安装后，扩展会订阅 TRAE 内置的任务完成事件，并读取 TRAE 自己提供的账户积分汇总。
-它只保存每次任务后增加的实际积分，不读取或保存提示词、回答正文和账号令牌，也不需要重启。
-由于 TRAE 的积分可能延迟结算，扩展还会每 30 秒自动对账；记录有时会比回答完成稍晚出现。
+安装后，扩展会订阅 TRAE 内置的任务完成事件，并立即记录调用次数。事件中如果包含模型、Token
+或缓存计数，也会一并记录；扩展不会读取或保存提示词、回答正文和账号令牌，也不需要重启。
+TRAE 自有积分仍会在后台每 30 秒自动对账。Coding Plan 等不扣 TRAE 积分的方案只记录调用及
+可用明细，积分显示为“不适用”。
 
-免重启接口不提供逐次 Token、缓存和模型明细。如果需要这些详细数据，可在仪表盘点击
+免重启接口不保证提供逐次 Token、缓存和模型明细。如果需要补全这些详细数据，可在仪表盘点击
 “启用详细 Token 监听”。扩展会在确认后保存已修改文件、等待 TRAE 完全退出，再以仅绑定
 本机的 CDP 端口重新打开当前工作区。这个增强步骤是可选的。
 
@@ -65,7 +66,7 @@ Windows 自定义安装盘符或目录会自动从 TRAE 的应用根目录识别
 
 状态含义：
 
-- `免重启积分监听已就绪`：记录任务后的实际积分变化，不提供逐次 Token 明细；
+- `免重启调用监听已就绪`：记录调用次数，以及任务事件中可用的模型、Token 和缓存数据；
 - `已连接，正在定位采集点`：详细模式已连接 CDP，正在加载 TRAE 的模型调用脚本；
 - `详细监听已就绪`：已能记录 Token、缓存、模型和积分明细。
 
@@ -103,7 +104,7 @@ POST /api/v1/commercial/get_session_usage
 - `traeUsage.cdpPort`：TRAE CDP 端口，默认 `9222`；
 - `traeUsage.servicePort`：本机单实例协调端口，默认 `4317`；
 - `traeUsage.autoStart`：自动启动监听运行时；
-- `traeUsage.nativeEnabled`：启用免重启原生积分监听，默认开启；
+- `traeUsage.nativeEnabled`：启用免重启原生调用监听，默认开启；
 - `traeUsage.debuggerEnabled`：启用 Token 调试断点兜底。
 
 ## 从源码开发

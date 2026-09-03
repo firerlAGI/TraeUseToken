@@ -53,6 +53,29 @@ export async function startUsageRuntime({
     }
   });
 
+  async function applyNativeTask(task) {
+    state.nativeAvailable = true;
+    state.mode = state.cdpConnected ? "cdp" : "native";
+    const row = store.record({
+      source: "native-task",
+      model: task.model || "TRAE 原生任务",
+      promptTokens: task.promptTokens,
+      completionTokens: task.completionTokens,
+      totalTokens: task.totalTokens,
+      cachedTokens: task.cachedTokens,
+      cacheWriteTokens: task.cacheWriteTokens,
+      observedAt: task.observedAt,
+      sessionId: task.sessionId,
+      userMessageId: task.userMessageId,
+      agentMessageId: task.agentMessageId,
+      billingId: task.taskId,
+      skipCreditEstimate: true
+    });
+    state.lastUsageAt = row.observed_at;
+    onLog(`[native] 调用完成：${row.model}`);
+    return { recorded: true, mode: state.mode, id: row.id };
+  }
+
   async function applyNativeSnapshot(snapshot) {
     const used = Number(snapshot?.used);
     if (!Number.isFinite(used) || used < 0) throw new Error("invalid native credits snapshot");
@@ -91,7 +114,8 @@ export async function startUsageRuntime({
     host,
     port: dashboardPort,
     getStatus: () => state,
-    onNativeSnapshot: applyNativeSnapshot
+    onNativeSnapshot: applyNativeSnapshot,
+    onNativeTask: applyNativeTask
   });
 
   let dashboardUrl;

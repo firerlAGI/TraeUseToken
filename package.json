@@ -1,6 +1,6 @@
 {
   "name": "trae-use-token",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "displayName": "Trae Use Token",
   "description": "在 TRAE 内本地观测模型 Token、缓存命中与实际/估算积分",
   "publisher": "firerl",
@@ -69,7 +69,7 @@
         "traeUsage.nativeEnabled": {
           "type": "boolean",
           "default": true,
-          "description": "使用 TRAE 内置任务事件记录实际积分变化；无需重启，且不读取提示词或回答正文"
+          "description": "使用 TRAE 内置任务事件记录调用次数和可用明细；无需重启，且不读取提示词或回答正文"
         },
         "traeUsage.debuggerEnabled": {
           "type": "boolean",

@@ -41,26 +41,34 @@ test("self-contained runtime exposes versioned health and connects to CDP discov
   }
 });
 
-test("native snapshots record credit deltas without CDP and deduplicate multiple windows", async () => {
+test("native tasks count without credits and later merge delayed credit deltas", async () => {
   const directory = mkdtempSync(join(tmpdir(), "trae-monitor-native-test-"));
   const runtime = await startUsageRuntime({
     dbPath: join(directory, "usage.db"),
     cdpPort: 65534,
     dashboardPort: 0,
-    version: "1.4.0"
+    version: "1.4.1"
   });
   try {
     const baseline = { used: 10, remaining: 90, reason: "baseline", observedAt: "2026-09-02T00:00:00.000Z" };
     await fetch(`${runtime.dashboardUrl}/api/native-snapshot`, {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(baseline)
     });
+    const task = { taskId: "task-1", model: "Coding Plan Model", promptTokens: 12,
+      completionTokens: 3, totalTokens: 15, cachedTokens: 8 };
+    await fetch(`${runtime.dashboardUrl}/api/native-task`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(task)
+    });
+    await fetch(`${runtime.dashboardUrl}/api/native-task`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(task)
+    });
     const first = await fetch(`${runtime.dashboardUrl}/api/native-snapshot`, {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ used: 10.25, remaining: 89.75, reason: "task", taskId: "task-1" })
+      body: JSON.stringify({ used: 10.25, remaining: 89.75, reason: "settlement", taskId: "task-1" })
     }).then((response) => response.json());
     const duplicate = await fetch(`${runtime.dashboardUrl}/api/native-snapshot`, {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ used: 10.25, remaining: 89.75, reason: "task", taskId: "task-1" })
+      body: JSON.stringify({ used: 10.25, remaining: 89.75, reason: "settlement", taskId: "task-1" })
     }).then((response) => response.json());
     const secondWindowBaseline = await fetch(`${runtime.dashboardUrl}/api/native-snapshot`, {
       method: "POST", headers: { "content-type": "application/json" },
@@ -72,6 +80,7 @@ test("native snapshots record credit deltas without CDP and deduplicate multiple
     assert.equal(secondWindowBaseline.recorded, false);
     assert.equal(runtime.state.nativeCreditsUsed, 10.25);
     assert.equal(runtime.store.summary().total.calls, 1);
+    assert.equal(runtime.store.summary().total.total_tokens, 15);
     assert.equal(runtime.store.summary().total.actual_credits, 0.25);
     assert.equal(health.nativeAvailable, true);
     assert.equal(health.mode, "native");
