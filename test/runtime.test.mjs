@@ -83,6 +83,8 @@ test("native tasks count without credits and later merge delayed credit deltas",
     assert.equal(runtime.store.summary().total.total_tokens, 15);
     assert.equal(runtime.store.summary().total.actual_credits, 0.25);
     assert.equal(health.nativeAvailable, true);
+    assert.equal(health.nativeTaskEvents, 2);
+    assert.equal(health.nativeTaskEventsWithTokenCounts, 2);
     assert.equal(health.mode, "native");
   } finally {
     await runtime.stop();

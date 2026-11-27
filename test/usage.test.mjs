@@ -48,3 +48,16 @@ test("parses TRAE get_session_usage billing response", () => {
     cachedTokens: 29234, cacheWriteTokens: 0, credits: 0.04, sessionId: "user-message-1"
   });
 });
+
+test("keeps batched observations separate and does not borrow sibling billing metadata", () => {
+  const usage = { input_token: 100, output_token: 2 };
+  const events = parseResponseBody(JSON.stringify([
+    { session_id: "turn-a", model_name: "Seed-Code", credits_float: 0.1, usage },
+    { session_id: "turn-b", model_name: "Seed-Code", credits_float: 0.1, usage },
+    { usage }
+  ]));
+  assert.equal(events.length, 3);
+  assert.deepEqual(events.map(({ sessionId }) => sessionId), ["turn-a", "turn-b", undefined]);
+  assert.deepEqual(events.map(({ credits }) => credits), [0.1, 0.1, null]);
+  assert.equal(events[2].model, "unknown");
+});

@@ -19,12 +19,12 @@ for (const [name, source] of [["public dashboard", publicDashboard], ["TRAE webv
     assert.match(source, /max-height:clamp\(320px,52vh,560px\)/u);
     assert.match(source, /overflow:auto/u);
     assert.match(source, /position:sticky/u);
-    assert.match(source, /aria-label="调用记录，可滚动"/u);
+    assert.match(source, /aria-label="采集记录，可滚动"/u);
     assert.match(source, /tabindex="0"/u);
   });
 
   test(`${name} presents credit-free Coding Plan calls as not applicable`, () => {
     assert.match(source, /不适用/u);
-    assert.match(source, /免重启调用监听已就绪/u);
+    assert.match(source, /已订阅 TRAE 任务事件/u);
   });
 }

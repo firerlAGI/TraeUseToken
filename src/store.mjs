@@ -43,6 +43,11 @@ export class UsageStore extends EventEmitter {
     `);
   }
 
+  hasBilling(id) {
+    return Boolean(this.db.prepare(`SELECT 1 FROM calls WHERE billing_id = ?
+      AND instr(',' || source || ',', ',billing,') > 0 LIMIT 1`).get(id));
+  }
+
   record(event) {
     const observedAt = event.observedAt ?? new Date().toISOString();
     const model = event.model || "unknown";
@@ -72,12 +77,18 @@ export class UsageStore extends EventEmitter {
       `).get(userMessageId, userMessageId, billingId, billingId, billingId);
     }
 
+    // Token counts can correlate observations only when at least one side lacks a turn ID.
+    const unidentifiedTurnFilter = userMessageId || billingId
+      ? "AND user_message_id IS NULL AND billing_id IS NULL"
+      : "";
+
     // A completed historical turn may be billed long after its token event was saved.
     if (!duplicate && actualCredits !== null && event.source === "billing") {
       duplicate = this.db.prepare(`
         SELECT * FROM calls
         WHERE model = ? AND total_tokens = ? AND prompt_tokens = ? AND completion_tokens = ?
           AND credit_kind != 'actual'
+          ${unidentifiedTurnFilter}
         ORDER BY id DESC LIMIT 1
       `).get(model, values.totalTokens, values.promptTokens, values.completionTokens);
     }
@@ -88,6 +99,7 @@ export class UsageStore extends EventEmitter {
         SELECT * FROM calls
         WHERE model = ? AND total_tokens = ? AND prompt_tokens = ? AND completion_tokens = ?
           AND unixepoch(observed_at) >= unixepoch(?) - 5
+          ${unidentifiedTurnFilter}
         ORDER BY id DESC LIMIT 1
       `).get(model, values.totalTokens, values.promptTokens, values.completionTokens, observedAt);
     }

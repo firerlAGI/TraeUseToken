@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { parseResponseBody, extractUsageEvents } from "./usage.mjs";
+import { isTraeReplyTarget, ReplyUsageWatcher } from "./reply-usage.mjs";
 
 export class CdpConnection extends EventEmitter {
   constructor(url) {
@@ -94,8 +95,21 @@ export class TargetCollector extends EventEmitter {
     this.cdp.on("Debugger.paused", (params) => void this.#paused(params));
     await this.cdp.send("Runtime.enable");
     await this.cdp.send("Network.enable", { maxTotalBufferSize: 50_000_000, maxResourceBufferSize: 10_000_000 });
+    if (isTraeReplyTarget(this.target)) this.replyUsage = new ReplyUsageWatcher(this.cdp, this.options);
     if (this.options.debugger !== false) await this.cdp.send("Debugger.enable", { maxScriptsCacheSize: 50_000_000 });
     return this;
+  }
+
+  async pollReplyUsage() {
+    if (!this.replyUsage || this.replyPollPending) return;
+    this.replyPollPending = true;
+    try {
+      await this.replyUsage.poll();
+    } catch {
+      // The renderer may be reloading. The network listener remains active.
+    } finally {
+      this.replyPollPending = false;
+    }
   }
 
   #responseReceived({ requestId, response, type }) {
@@ -181,13 +195,16 @@ export class TargetCollector extends EventEmitter {
 }
 
 export class TraeMonitor extends EventEmitter {
-  constructor({ host = "127.0.0.1", port = 9222, debugger: debuggerEnabled = true } = {}) {
+  constructor({ host = "127.0.0.1", port = 9222, debugger: debuggerEnabled = true, hasBilling, historyBackfill = false } = {}) {
     super();
     this.host = host;
     this.port = port;
     this.debuggerEnabled = debuggerEnabled;
     this.collectors = new Map();
     this.running = false;
+    this.hasBilling = hasBilling;
+    this.historyBackfill = historyBackfill;
+    this.nextHistoryLookupAt = 0;
   }
 
   async discover() {
@@ -212,13 +229,26 @@ export class TraeMonitor extends EventEmitter {
       if (!liveIds.has(id)) { collector.close(); this.collectors.delete(id); }
     }
     for (const target of eligible) {
-      if (this.collectors.has(target.id)) continue;
+      if (this.collectors.has(target.id)) {
+        void this.collectors.get(target.id).pollReplyUsage();
+        continue;
+      }
       try {
-        const collector = await new TargetCollector(target, { debugger: this.debuggerEnabled }).start();
+        const collector = await new TargetCollector(target, {
+          debugger: this.debuggerEnabled,
+          hasBilling: this.hasBilling,
+          claimHistoryLookup: this.historyBackfill && (() => {
+            const now = Date.now();
+            if (now < this.nextHistoryLookupAt) return false;
+            this.nextHistoryLookupAt = now + 9000;
+            return true;
+          })
+        }).start();
         collector.on("usage", (usage) => this.emit("usage", usage));
         collector.on("diagnostic", (event) => this.emit("diagnostic", event));
         collector.on("close", () => this.collectors.delete(target.id));
         this.collectors.set(target.id, collector);
+        void collector.pollReplyUsage();
       } catch (error) {
         this.emit("diagnostic", { type: "target-error", targetId: target.id, error: error.message });
       }

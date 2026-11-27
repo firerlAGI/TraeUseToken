@@ -71,6 +71,11 @@
           "default": true,
           "description": "使用 TRAE 内置任务事件记录调用次数和可用明细；无需重启，且不读取提示词或回答正文"
         },
+        "traeUsage.historyBackfill": {
+          "type": "boolean",
+          "default": true,
+          "description": "详细监听期间，在后台限速补录已经加载的旧回复账单"
+        },
         "traeUsage.debuggerEnabled": {
           "type": "boolean",
           "default": true,

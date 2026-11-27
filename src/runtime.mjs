@@ -8,6 +8,7 @@ export async function startUsageRuntime({
   cdpPort = 9222,
   dashboardPort = 4317,
   debuggerEnabled = true,
+  historyBackfill = true,
   version = "dev",
   onLog = () => {}
 }) {
@@ -22,6 +23,8 @@ export async function startUsageRuntime({
     lastUsageAt: null,
     mode: "waiting",
     nativeAvailable: false,
+    nativeTaskEvents: 0,
+    nativeTaskEventsWithTokenCounts: 0,
     nativeCreditsUsed: null,
     nativeCreditsRemaining: null,
     lastNativeAt: null,
@@ -30,7 +33,8 @@ export async function startUsageRuntime({
     dashboardPort,
     pid: process.pid
   };
-  const monitor = new TraeMonitor({ host, port: cdpPort, debugger: debuggerEnabled });
+  const monitor = new TraeMonitor({ host, port: cdpPort, debugger: debuggerEnabled, historyBackfill,
+    hasBilling: (id) => store.hasBilling(id) });
   let stopped = false;
 
   monitor.on("status", ({ connected, targetCount, error }) => {
@@ -56,6 +60,11 @@ export async function startUsageRuntime({
   async function applyNativeTask(task) {
     state.nativeAvailable = true;
     state.mode = state.cdpConnected ? "cdp" : "native";
+    state.nativeTaskEvents++;
+    if ([task.promptTokens, task.completionTokens, task.totalTokens,
+      task.cachedTokens, task.cacheWriteTokens].some(Number.isFinite)) {
+      state.nativeTaskEventsWithTokenCounts++;
+    }
     const row = store.record({
       source: "native-task",
       model: task.model || "TRAE 原生任务",
