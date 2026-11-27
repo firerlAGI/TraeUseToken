@@ -70,10 +70,6 @@ function deepContext(payload) {
   const queue = [{ value: payload, depth: 0 }];
   const seen = new WeakSet();
   let model = null;
-  let credits = null;
-  let sessionId = null;
-  let userMessageId = null;
-  let agentMessageId = null;
   while (queue.length) {
     const { value, depth } = queue.shift();
     if (!value || typeof value !== "object" || depth > 10 || seen.has(value)) continue;
@@ -82,15 +78,11 @@ function deepContext(payload) {
       const candidate = directModel(value);
       if (candidate && candidate.toLowerCase() !== "unknown") model = candidate;
     }
-    if (credits === null) credits = directCredits(value);
-    sessionId ??= directIdentifier(value, identifierKeys.sessionId);
-    userMessageId ??= directIdentifier(value, identifierKeys.userMessageId);
-    agentMessageId ??= directIdentifier(value, identifierKeys.agentMessageId);
     for (const child of Object.values(value)) {
       if (child && typeof child === "object") queue.push({ value: child, depth: depth + 1 });
     }
   }
-  return { model, credits, sessionId, userMessageId, agentMessageId };
+  return { model };
 }
 
 function normalizeUsage(object, inherited) {
@@ -118,7 +110,7 @@ function normalizeUsage(object, inherited) {
   return result;
 }
 
-export function extractUsageEvents(payload) {
+export function extractUsageEvents(payload, { inferSiblingModel = true } = {}) {
   const events = [];
   const seenObjects = new WeakSet();
   const signatures = new Set();
@@ -139,9 +131,11 @@ export function extractUsageEvents(payload) {
       const event = normalizeUsage(value, context);
       if (event) {
         const signature = [event.model, event.promptTokens, event.completionTokens, event.totalTokens,
-          event.cachedTokens, event.cacheWriteTokens, event.credits].join("|");
-        if (!signatures.has(signature)) {
-          signatures.add(signature);
+          event.cachedTokens, event.cacheWriteTokens, event.credits, event.sessionId,
+          event.userMessageId, event.agentMessageId];
+        const key = JSON.stringify(signature);
+        if (!signatures.has(key)) {
+          signatures.add(key);
           events.push(event);
         }
       }
@@ -149,7 +143,7 @@ export function extractUsageEvents(payload) {
     for (const child of Object.values(value)) visit(child, context, depth + 1);
   }
 
-  visit(payload, deepContext(payload));
+  visit(payload, inferSiblingModel ? deepContext(payload) : {});
   return events;
 }
 
@@ -165,5 +159,5 @@ export function parseResponseBody(body) {
       try { payloads.push(JSON.parse(text)); } catch { /* Ignore non-JSON stream frames. */ }
     }
   }
-  return payloads.flatMap(extractUsageEvents);
+  return payloads.flatMap((payload) => extractUsageEvents(payload, { inferSiblingModel: false }));
 }

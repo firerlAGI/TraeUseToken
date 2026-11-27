@@ -71,9 +71,10 @@ test("starts with a baseline and refreshes after a native task event", async () 
   bridge.dispose();
 });
 
-test("periodically reconciles delayed TRAE credit settlement", async () => {
+test("periodically reconciles delayed TRAE credit settlement", { timeout: 1000 }, async () => {
   let reads = 0;
-  const sent = [];
+  let reportSettlement;
+  const settlement = new Promise((resolve) => { reportSettlement = resolve; });
   const vscode = {
     commands: {
       getCommands: async () => ["workbench.action.icubeGetCreditsUsageInfo"],
@@ -85,14 +86,16 @@ test("periodically reconciles delayed TRAE credit settlement", async () => {
     vscode,
     sendTask: async () => ({}),
     sendSnapshot: async (value) => {
-      sent.push(value);
+      if (value.reason === "reconcile" && value.used === 2) reportSettlement(value);
       return { recorded: value.used > 1 };
     },
     retryDelays: [],
     reconcileInterval: 5
   });
-  assert.equal(await bridge.start(), true);
-  await new Promise((resolve) => setTimeout(resolve, 18));
-  assert.ok(sent.some((value) => value.reason === "reconcile" && value.used === 2));
-  bridge.dispose();
+  try {
+    assert.equal(await bridge.start(), true);
+    assert.equal((await settlement).used, 2);
+  } finally {
+    bridge.dispose();
+  }
 });

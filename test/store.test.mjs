@@ -21,6 +21,20 @@ test("persists, estimates and merges duplicate observations", () => {
   store.close();
 });
 
+test("keeps different turn IDs separate even when their token counts match", () => {
+  const store = new UsageStore(":memory:");
+  const usage = { model: "Seed-Code", promptTokens: 1000, completionTokens: 5, totalTokens: 1005 };
+  store.record({ ...usage, source: "debugger", userMessageId: "turn-a",
+    observedAt: "2026-01-01T00:00:00.000Z" });
+  const second = store.record({ ...usage, source: "billing", billingId: "turn-b", credits: 0.04,
+    observedAt: "2026-01-01T00:00:02.000Z" });
+  const repeat = store.record({ ...usage, source: "billing", billingId: "turn-b", credits: 0.04,
+    observedAt: "2026-01-01T00:00:03.000Z" });
+  assert.equal(store.summary().total.calls, 2);
+  assert.equal(repeat.id, second.id);
+  store.close();
+});
+
 test("uses model calibration for a fully cached Seed-Code call", () => {
   assert.ok(Math.abs(estimateCredits({ model: "Doubao-Seed-Code", promptTokens: 29234, cachedTokens: 29234 }) - 0.04) < 0.001);
 });
